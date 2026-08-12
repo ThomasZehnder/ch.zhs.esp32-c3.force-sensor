@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>ZHS Force Sensor 2026</title>
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <link rel="stylesheet" href="./style.css">
+
+    <script>
+
+        function loadMain(articleUrl, asideUrl, param) {
+            loadArticle(articleUrl, param);
+            loadAside(asideUrl);
+        }
+
+        function loadArticle(url, param) {
+            stopTimer();
+            fetch(url)
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (html) {
+                    //console.log(html);
+                    const myArticle = document.getElementById("articleId");
+                    myArticle.innerHTML = html;
+
+                    //execude page initializizer
+                    //console.log("loaded url: ", url);
+                    if (url.startsWith('a-home')) {
+                        startTimerFn(loadAssemblyTable, 500);
+                    }
+                    else if (url.startsWith('a-diagnose')) {
+                        startTimer(['/assembly'], ['assemblyId'], 500);
+                    }
+                    else if (url.startsWith('a-config')) {
+                        loadEditor(param);
+                        setTitle(String("Edit ") + param);
+                    }
+                    else if (url.startsWith('a-files')) {
+                        console.log("Load files: ", param)
+                        loadElement(param, "preId");
+                    }
+                });
+        }
+
+        function loadAside(url, param) {
+
+            fetch(url)
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (html) {
+                    //console.log(html);
+                    const myArticle = document.getElementById("asideId");
+                    myArticle.innerHTML = html;
+                });
+        }
+
+        let loadElementSemaphore = true;
+        function loadElement(url, id) {
+            if (loadElementSemaphore) {
+                loadElementSemaphore = false;
+                showSpinner(); // Call this when you want to show the spinner
+                fetch(url)
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error("Network response was not ok");
+                        }
+                        return response.text();
+                    })
+                    .then(function (html) {
+                        //console.log(html);
+                        const myElement = document.getElementById(id);
+                        if (myElement) { // element can be gone already if the user navigated away while this fetch was in flight
+                            myElement.innerHTML = html;
+                        }
+                    })
+                    .catch(function (error) {
+                        console.error("Error loading element:", error);
+                        setFooter("Error loading " + url + ": " + error.message);
+                    })
+                    .finally(function () {
+                        loadElementSemaphore = true;
+                        hideSpinner(); // Call this when you want to hide the spinner
+                    });
+            }
+        }
+
+        function setTitle(text) {
+            const myTitle = document.getElementById("titleId");
+            myTitle.innerHTML = text;
+        }
+
+        function setFooter(text) {
+            const myfooter = document.getElementById("pFooter");
+            myfooter.innerHTML = text;
+        }
+
+        //sendReboot
+        function sendReboot(bootMode) {
+            fetch('reboot?bootmode=' + bootMode)
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    setFooter(data.message);
+                })
+                .catch(function (error) {
+                    console.error("Error sending reboot:", error);
+                    setFooter("Error sending reboot: " + error.message);
+                });
+        }
+
+        //Fetch cyclic
+        var timerId = null;
+        var refreshFn = null; // current cyclic action, so changeRefreshRate can restart it at a new interval
+
+        function startTimerFn(fn, time) {
+            stopTimer();
+            refreshFn = fn;
+            fn(); // fetch immediately instead of waiting for the first interval tick
+            timerId = setInterval(fn, time);
+        }
+
+        function startTimer(url, id, time) {
+            var i = 0;
+            startTimerFn(() => {
+                i = (i + 1) % url.length;
+                loadElement(url[i], id[i]);
+            }, time);
+        }
+
+        function stopTimer() {
+            clearInterval(timerId);
+            timerId = null;
+        }
+
+        //change refreshRate
+        function changeRefreshRate(time) {
+            console.log(time);
+            stopTimer();
+            if (time > 0 && refreshFn) {
+                timerId = setInterval(refreshFn, time);
+            }
+        }
+
+        //Assembly status table (force/offset/scale/state) on the home page
+        let assemblyTableSemaphore = true;
+        function loadAssemblyTable() {
+            if (!assemblyTableSemaphore) {
+                return; // last request not answered yet, skip this tick
+            }
+            assemblyTableSemaphore = false;
+            fetch('/assembly')
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    document.getElementById('forceId').textContent = Number(data.force).toFixed(1) + " N";
+                    document.getElementById('offsetId').textContent = data.offset;
+                    document.getElementById('scaleId').textContent = data.scale;
+                    document.getElementById('stateTextId').textContent = data.stateText;
+                    drawForceChart(data.forceHistory);
+                    assemblyTableSemaphore = true;
+                })
+                .catch(function (error) {
+                    console.error("Error loading assembly:", error);
+                    assemblyTableSemaphore = true;
+                });
+        }
+
+        // draws the forceHistory array as a line, autoscaled to its own min/max,
+        // same idea as drawForceGraph() on the OLED (Oled.cpp)
+        function drawForceChart(history) {
+            const canvas = document.getElementById('forceChartId');
+            if (!canvas || !history || history.length < 2) {
+                return;
+            }
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            let min = history[0];
+            let max = history[0];
+            history.forEach(function (v) {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            });
+            const range = max - min;
+
+            ctx.strokeStyle = '#0077cc';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            history.forEach(function (v, i) {
+                const x = (i / (history.length - 1)) * w;
+                const y = range > 0 ? h - ((v - min) / range) * h : h / 2;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+
+            // label the y-axis extremes (max top-left, min bottom-left), with a backing
+            // box so the text stays readable where the line crosses it
+            function drawYLabel(text, y) {
+                ctx.font = '10px sans-serif';
+                const textWidth = ctx.measureText(text).width;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                ctx.fillRect(0, y, textWidth + 4, 12);
+                ctx.fillStyle = '#000';
+                ctx.fillText(text, 2, y + 9);
+            }
+            drawYLabel(max.toFixed(1) + " N", 0);
+            drawYLabel(min.toFixed(1) + " N", h - 12);
+        }
+
+        function showSpinner() {
+            const spinnerContainer = document.getElementById("spinner-container");
+            if (!spinnerContainer) {
+                console.log("show spinnercontainer not found");
+                return;
+            }
+            if (spinnerContainer.querySelector(".spinner")) {
+                return; // already showing, e.g. loadEditor() and loadCodeMirror() both request it
+            }
+            const spinner = document.createElement("div");
+            spinner.className = "spinner";
+            spinnerContainer.appendChild(spinner);
+            console.log("show spinner");
+        }
+
+        function hideSpinner() {
+            const spinnerContainer = document.getElementById("spinner-container");
+            const spinner = spinnerContainer ? spinnerContainer.querySelector(".spinner") : null;
+            if (spinner) {
+                spinnerContainer.removeChild(spinner);
+                console.log("hide spinner");
+            }
+        }
+
+        // Code Mirror functions - lazy-loaded, only a-config/a-js-editor/a-js-monitor need this,
+        // so a-home doesn't have to wait for ~11 extra file round-trips to the ESP on first load
+        var codeMirrorAssetsPromise = null;
+
+        // retries a failing load up to `retries` extra times before giving up
+        function withRetry(loadFn, description, retries) {
+            return loadFn().catch(function (error) {
+                if (retries <= 0) {
+                    throw error;
+                }
+                console.warn("Retrying " + description + " after error: " + error.message);
+                return withRetry(loadFn, description, retries - 1);
+            });
+        }
+
+        function loadScript(src) {
+            return withRetry(function () {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('Failed to load ' + src));
+                    document.head.appendChild(script);
+                });
+            }, src, 2);
+        }
+
+        function loadStylesheet(href) {
+            return withRetry(function () {
+                return new Promise((resolve, reject) => {
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = href;
+                    link.onload = resolve;
+                    link.onerror = () => reject(new Error('Failed to load ' + href));
+                    document.head.appendChild(link);
+                });
+            }, href, 2);
+        }
+
+        function loadCodeMirrorAssets() {
+            if (!codeMirrorAssetsPromise) {
+                codeMirrorAssetsPromise = Promise.all([
+                    loadStylesheet('./lib/codemirror.css'),
+                    loadStylesheet('./theme/cobalt.css'),
+                    loadStylesheet('./addon/hint/show-hint.css')
+                ])
+                    .then(() => loadScript('./lib/codemirror.js'))
+                    .then(() => loadScript('./addon/mode/javascript/javascript.js'))
+                    .then(() => loadScript('./addon/hint/javascript-hint.js'))
+                    .then(() => loadScript('./addon/hint/show-hint.js'))
+                    .then(() => loadScript('./addon/edit/closebrackets.js'))
+                    .then(() => loadScript('./addon/edit/closetag.js'))
+                    .then(() => loadScript('./addon/edit/matchbrackets.js'))
+                    .then(() => loadScript('./addon/edit/trailingspace.js'))
+                    .catch(function (error) {
+                        // don't cache a permanently failed load - the next loadEditor() call can try again
+                        codeMirrorAssetsPromise = null;
+                        throw error;
+                    });
+            }
+            return codeMirrorAssetsPromise;
+        }
+
+        var editorUrl = "";
+        var editor;
+        function loadEditor(url) {
+            const textarea = document.getElementById("editorId");
+            if (textarea) {
+                textarea.style.display = "none"; // stays hidden until loadCodeMirror() reveals the editor
+            }
+            showSpinner();
+
+            loadCodeMirrorAssets().then(function () {
+                editorUrl = url;
+                editor = CodeMirror.fromTextArea(document.getElementById("editorId"), {
+                    mode: {
+                        name: "javascript",
+                        globalVars: true
+                    },
+                    theme: "cobalt",
+                    lineNumbers: true,
+
+                    autoCloseBrackets: true,
+                    autoCloseTags: true,
+                    matchBrackets: true,
+                    showTrailingSpace: true,
+
+                    hint: CodeMirror.hint.javascript,
+
+                    extraKeys: {
+                        "Ctrl-Space": "autocomplete"
+                    }
+
+                });
+                editor.getWrapperElement().style.display = "none"; // don't flash the still-empty editor
+                editor.save();
+                loadCodeMirror();
+            }).catch(function (error) {
+                console.error("Error loading CodeMirror assets:", error);
+                setFooter("Error loading CodeMirror assets: " + error.message);
+                hideSpinner();
+            });
+        }
+        function loadCodeMirror() {
+            showSpinner();
+            if (editor) {
+                editor.getWrapperElement().style.display = "none";
+            }
+            fetch(editorUrl)
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.text();
+                })
+                .then(function (c) {
+                    editor.setValue(c);
+                    console.log("load click: ", editorUrl);
+                    //console.log(c);
+                    setFooter("Load codemirror " + editorUrl + " done.")
+                })
+                .catch(function (error) {
+                    console.error("Error loading CodeMirror:", error);
+                    setFooter("Error loading " + editorUrl + ": " + error.message);
+                })
+                .finally(function () {
+                    editor.getWrapperElement().style.display = "";
+                    // CodeMirror can't measure line height/width while its wrapper is hidden, so the
+                    // content set via setValue() above doesn't render correctly until refresh() is called
+                    editor.refresh();
+                    hideSpinner();
+                });
+
+        }
+
+        function saveCodeMirror() {
+            var c = editor.getValue();
+            console.log("save click: ", editorUrl);
+            //console.log(c);
+            setFooter("saveCodeMirror... ");
+
+            //validate JSON
+            if (editorUrl.endsWith('.json')) {
+                try {
+                    var x = JSON.parse(c);
+
+                } catch (e) {
+                    alert('JSON not valid: ' + e);
+                    setFooter("JSON error " + e);
+                    console.log(e);
+                    return;
+                }
+            }
+
+            fetch('/store?name=' + editorUrl, {
+                method: 'POST',
+                body: c
+            })
+                .then(res => res.text())
+                .then(res => {
+                    console.log(res);
+                    setFooter("saveCodeMirror ok " + res);
+                })
+                .catch(err => {
+                    console.log(err);
+                    setFooter("saveCodeMirror error " + err);
+                })
+        }
+
+        // validates the editor content as JSON and reformats it (indented, CRLF line endings)
+        function formatJson() {
+            var c = editor.getValue();
+
+            var x;
+            try {
+                x = JSON.parse(c);
+            } catch (e) {
+                alert('JSON not valid: ' + e);
+                setFooter("JSON error " + e);
+                console.log(e);
+                return;
+            }
+
+            var formatted = JSON.stringify(x, null, 4).replace(/\n/g, "\r\n");
+            editor.setValue(formatted);
+            setFooter("formatJson ok");
+        }
+    </script>
+</head>
+
+<body onload="loadMain('a-home.html', 'aa-home.html',0);">
+    <header>
+        <h1>ZHS Force Sensor with ESP32-C3</h1>
+    </header>
+    <nav>
+        <ul>
+            <li class="menu"><a class="button" onclick="loadMain('a-home.html', 'aa-home.html');">Home</a></li>
+            <li class="menu"><a class="button" onclick="loadMain('a-files.html', 'aa-files.html', '/dir');">Files</a>
+            </li>
+            <li class="menu"><a class="button"
+                    onclick="loadMain('a-config.html', 'aa-config.html','config_main.json');">Config</a>
+            </li>
+
+        </ul>
+
+        <img class="logo" src="logo.png">
+
+    </nav>
+
+    <main>
+        <article id="articleId">
+            <h2> ... loading dynamicaly...</h2>
+        </article>
+        <aside id="asideId">
+            <h2>... loading dynamicaly...</h2>
+        </aside>
+    </main>
+
+    <footer>
+        <p id="pFooter"> V1.0 &copy;&nbsp;Copyright 2026 by zhs. All rights reserved.</p>
+    </footer>
+
+</body>
+
+</html>

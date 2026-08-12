@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Force Sensor Display</title>
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: #000;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .home-link {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            color: #ff6a00;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+            text-decoration: none;
+            text-shadow: 0 0 8px rgba(255, 106, 0, 0.6);
+        }
+
+        .home-link:hover {
+            color: #ff9a40;
+        }
+
+        .row {
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .display {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .digit {
+            position: relative;
+            width: 50px;
+            height: 90px;
+        }
+
+        .seg {
+            position: absolute;
+            background: #3a0000; /* unlit segment */
+            transition: background 0.08s, box-shadow 0.08s;
+        }
+
+        .seg.on {
+            background: #ff1a1a;
+            box-shadow: 0 0 12px 3px rgba(255, 26, 26, 0.85);
+        }
+
+        .segA, .segG, .segD {
+            left: 6px;
+            width: 38px;
+            height: 9px;
+            clip-path: polygon(12% 0%, 88% 0%, 100% 50%, 88% 100%, 12% 100%, 0% 50%);
+        }
+        .segA { top: 0; }
+        .segG { top: 40.5px; }
+        .segD { top: 81px; }
+
+        .segF, .segB, .segE, .segC {
+            width: 9px;
+            height: 35px;
+            clip-path: polygon(0% 12%, 50% 0%, 100% 12%, 100% 88%, 50% 100%, 0% 88%);
+        }
+        .segF { top: 6px; left: 0; }
+        .segB { top: 6px; left: 41px; }
+        .segE { top: 49px; left: 0; }
+        .segC { top: 49px; left: 41px; }
+
+        .dp {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #3a0000;
+            margin: 0 2px 6px 2px;
+        }
+
+        .dp.on {
+            background: #ff1a1a;
+            box-shadow: 0 0 12px 3px rgba(255, 26, 26, 0.85);
+        }
+
+        .unit {
+            color: #ff1a1a;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            font-size: 32px;
+            margin-left: 18px;
+            text-shadow: 0 0 8px rgba(255, 26, 26, 0.8);
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0.15; }
+        }
+
+        .display.blink {
+            animation: blink 0.6s step-start infinite;
+        }
+
+        .status {
+            color: #ff6a00;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            font-size: 22px;
+            letter-spacing: 4px;
+            text-align: center;
+            min-height: 26px;
+            margin-top: 14px;
+            text-shadow: 0 0 8px rgba(255, 106, 0, 0.8);
+        }
+
+        .state {
+            color: #999;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            font-size: 18px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-align: center;
+            min-height: 22px;
+            margin-bottom: 10px;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 36px;
+            border: 2px solid #4a1c00;
+            border-radius: 20px;
+            background: #0a0a0a;
+        }
+
+        #chartId {
+            width: 80vw;
+            height: 140px;
+            margin-top: 26px;
+            background: #050505;
+            border: 1px solid #5a2a10;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <a class="home-link" href="/">&#8962; Home</a>
+    <div class="wrap">
+        <div class="state" id="stateId"></div>
+        <div class="panel">
+            <div class="row">
+                <div class="display" id="displayId"></div>
+                <div class="unit">N</div>
+            </div>
+            <div class="status" id="statusId"></div>
+            <canvas id="chartId"></canvas>
+        </div>
+    </div>
+
+    <script>
+        var SEGMENTS = {
+            '0': 'abcdef', '1': 'bc', '2': 'abged', '3': 'abgcd', '4': 'fgbc',
+            '5': 'afgcd', '6': 'afgecd', '7': 'abc', '8': 'abcdefg', '9': 'abcdfg',
+            '-': 'g', ' ': ''
+        };
+
+        function buildDigit() {
+            var digit = document.createElement('div');
+            digit.className = 'digit';
+            'ABCDEFG'.split('').forEach(function (seg) {
+                var s = document.createElement('div');
+                s.className = 'seg seg' + seg;
+                s.dataset.seg = seg.toLowerCase();
+                digit.appendChild(s);
+            });
+            return digit;
+        }
+
+        function setDigit(digitEl, ch) {
+            var lit = SEGMENTS[ch] || '';
+            var segs = digitEl.querySelectorAll('.seg');
+            for (var i = 0; i < segs.length; i++) {
+                segs[i].classList.toggle('on', lit.indexOf(segs[i].dataset.seg) !== -1);
+            }
+        }
+
+        // layout: [sign][1000][100][10][1] . [0.1] - covers -9999.9 .. 9999.9 N
+        var displayEl = document.getElementById('displayId');
+        var intDigitEls = [];
+        for (var i = 0; i < 5; i++) {
+            var d = buildDigit();
+            intDigitEls.push(d);
+            displayEl.appendChild(d);
+        }
+        var dpEl = document.createElement('div');
+        dpEl.className = 'dp on';
+        displayEl.appendChild(dpEl);
+        var fracDigitEl = buildDigit();
+        displayEl.appendChild(fracDigitEl);
+
+        var OVERLOAD_LIMIT = 9999.9; // largest value the [sign][1000][100][10][1].[0.1] layout can show
+        var FETCH_TIMEOUT_MS = 2000;
+        var statusEl = document.getElementById('statusId');
+        var stateEl = document.getElementById('stateId');
+
+        function setStatus(text) {
+            statusEl.textContent = text;
+        }
+
+        function setState(text) {
+            stateEl.textContent = text || '';
+        }
+
+        function formatChars(value) {
+            var negative = value < 0;
+            var v = Math.abs(value);
+            var parts = v.toFixed(1).split('.');
+            var intPadded = parts[0].padStart(4, ' ');
+            return [negative ? '-' : ' '].concat(intPadded.split('')).concat([parts[1]]);
+        }
+
+        function showValue(value) {
+            displayEl.classList.remove('blink');
+            var chars = formatChars(value);
+            for (var i = 0; i < 5; i++) {
+                setDigit(intDigitEls[i], chars[i]);
+            }
+            setDigit(fracDigitEl, chars[5]);
+            setStatus('');
+        }
+
+        function showOverload() {
+            for (var i = 0; i < 5; i++) {
+                setDigit(intDigitEls[i], '-');
+            }
+            setDigit(fracDigitEl, '-');
+            displayEl.classList.add('blink');
+            setStatus('OVERLOAD');
+        }
+
+        // chart: draws forceHistory autoscaled to its own min/max, same idea as
+        // drawForceChart() in index.html and drawForceGraph() on the OLED (Oled.cpp)
+        var chartEl = document.getElementById('chartId');
+
+        function resizeChart() {
+            chartEl.width = chartEl.clientWidth;
+            chartEl.height = chartEl.clientHeight;
+        }
+        window.addEventListener('resize', resizeChart);
+        resizeChart();
+
+        function drawChartLabel(ctx, text, y) {
+            ctx.font = '12px Arial';
+            // textAlign/textBaseline persist on the canvas context across draw calls (the x-axis
+            // labels below set them to 'right'/'top') - reset explicitly so this always draws left-aligned
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+            var textWidth = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(2, y, textWidth + 6, 16);
+            ctx.fillStyle = '#ff6a00';
+            ctx.fillText(text, 4, y + 12);
+        }
+
+        var SAMPLE_INTERVAL_S = 0.2; // matches the 200ms sampling interval on the device (Force.cpp)
+        var HISTORY_SIZE = 50; // matches FORCE_HISTORY_SIZE in Global.h - fixed 10s window (50 * 200ms)
+        var AXIS_HEIGHT = 18;
+
+        function drawChart(history) {
+            var ctx = chartEl.getContext('2d');
+            var w = chartEl.width;
+            var h = chartEl.height;
+            var plotH = h - AXIS_HEIGHT;
+            ctx.clearRect(0, 0, w, h);
+
+            if (!history || history.length < 2) {
+                return;
+            }
+
+            var min = history[0];
+            var max = history[0];
+            history.forEach(function (v) {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            });
+            var range = max - min;
+
+            // x is relative to the fixed HISTORY_SIZE window, anchored to "now" at the right edge,
+            // so a not-yet-full buffer only occupies the right portion instead of stretching to fill the width
+            var dx = w / (HISTORY_SIZE - 1);
+            var points = history.map(function (v, i) {
+                var age = history.length - 1 - i; // 0 = newest sample
+                return {
+                    x: w - age * dx,
+                    y: range > 0 ? plotH - ((v - min) / range) * plotH : plotH / 2
+                };
+            });
+
+            ctx.strokeStyle = '#ff1a1a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            // smooth the line via quadratic curves through the midpoints of each segment,
+            // pulling toward the actual point in between - avoids the overshoot a full spline can have
+            for (var i = 1; i < points.length - 1; i++) {
+                var midX = (points[i].x + points[i + 1].x) / 2;
+                var midY = (points[i].y + points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY);
+            }
+            var last = points[points.length - 1];
+            var secondLast = points[points.length - 2];
+            ctx.quadraticCurveTo(secondLast.x, secondLast.y, last.x, last.y);
+            ctx.stroke();
+
+            drawChartLabel(ctx, 'max ' + max.toFixed(1) + ' N', 2);
+            drawChartLabel(ctx, 'min ' + min.toFixed(1) + ' N', plotH - 18);
+
+            // x-axis: time in seconds, newest sample (right edge) is "now" (0s)
+            ctx.strokeStyle = '#5a2a10';
+            ctx.beginPath();
+            ctx.moveTo(0, plotH + 0.5);
+            ctx.lineTo(w, plotH + 0.5);
+            ctx.stroke();
+
+            var spanS = HISTORY_SIZE * SAMPLE_INTERVAL_S; // the full window (50 * 200ms = 10s), for the axis label
+            ctx.font = '11px Arial';
+            ctx.fillStyle = '#ff6a00';
+            ctx.textBaseline = 'top';
+
+            ctx.textAlign = 'left';
+            ctx.fillText('-' + spanS.toFixed(0) + 's', 2, plotH + 3);
+
+            ctx.textAlign = 'center';
+            ctx.fillText('-' + (spanS / 2).toFixed(0) + 's', w / 2, plotH + 3);
+
+            ctx.textAlign = 'right';
+            ctx.fillText('0s', w - 2, plotH + 3);
+        }
+
+        var pollSemaphore = true;
+        function pollForce() {
+            if (!pollSemaphore) {
+                return; // last request not answered yet, skip this tick
+            }
+            pollSemaphore = false;
+
+            var controller = new AbortController();
+            var timeoutId = setTimeout(function () {
+                controller.abort();
+            }, FETCH_TIMEOUT_MS);
+
+            fetch('/assembly', { signal: controller.signal })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    setState(data.stateText);
+                    var value = Number(data.force);
+                    if (!isFinite(value) || Math.abs(value) > OVERLOAD_LIMIT) {
+                        showOverload();
+                    } else {
+                        showValue(value);
+                    }
+                    drawChart(data.forceHistory);
+                })
+                .catch(function (error) {
+                    console.error('Error loading assembly:', error);
+                    setStatus(error.name === 'AbortError' ? 'TIMEOUT CONNECTION TO SENSOR' : 'NO CONNECTION');
+                })
+                .finally(function () {
+                    clearTimeout(timeoutId);
+                    pollSemaphore = true;
+                });
+        }
+
+        pollForce();
+        setInterval(pollForce, 500);
+    </script>
+</body>
+
+</html>

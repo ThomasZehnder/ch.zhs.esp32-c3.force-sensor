@@ -1,0 +1,14 @@
+[
+    {
+        "SSID": "ssid1",
+        "PASSWORD": "pw1"
+    },
+    {
+        "SSID": "ssid2",
+        "PASSWORD": "pw2"
+    },
+    {
+        "SSID": "ssid3",
+        "PASSWORD": "pw3"
+    }
+]
