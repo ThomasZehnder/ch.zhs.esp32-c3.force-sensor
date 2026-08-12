@@ -57,7 +57,7 @@ void handleJson()
   doc["accesspoint_ip"] = WiFi.softAPIP().toString();
 
   // Create the "digital" array
-  JsonArray digitalValues = doc.createNestedArray("digital");
+  JsonArray digitalValues = doc["digital"].to<JsonArray>();
   for (int pin = 0; pin < 17; pin++)
   {
     // Read the digital input
@@ -131,7 +131,7 @@ void assemblyJson()
   doc["scale"] = Assembly.force.sensor.get_scale();
 
   // rolling history, chronological order (oldest to newest), 200ms interval covering the last 10s
-  JsonArray forceHistory = doc.createNestedArray("forceHistory");
+  JsonArray forceHistory = doc["forceHistory"].to<JsonArray>();
   int historyCount = Assembly.force.historyFull ? FORCE_HISTORY_SIZE : Assembly.force.historyIndex;
   int historyStart = Assembly.force.historyFull ? Assembly.force.historyIndex : 0;
   for (int i = 0; i < historyCount; i++)
