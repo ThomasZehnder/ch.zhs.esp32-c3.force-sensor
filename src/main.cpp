@@ -14,28 +14,49 @@ void setup()
 {
     Serial.begin(115200);
     Serial.println();
+    Serial.println("[DEBUG] === SETUP START ===");
 
+    Serial.println("[DEBUG] Assembly.setup()...");
     Assembly.setup(); // read config file
 
+    Serial.println("[DEBUG] initDisplay()...");
     initDisplay();
     renderDisplay("ESP32-C3 OLED", "DeviceId", Assembly.deviceId, "...");
 
+    Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();
 
+    Serial.println("[DEBUG] setupWebServer()...");
     setupWebServer();
 
+    Serial.println("[DEBUG] hwSetup()...");
     hwSetup();
 
+    Serial.println("[DEBUG] Force.setup()...");
     Force.setup();
+
+    Serial.println("[DEBUG] === SETUP END ===");
 }
 
 void loop()
 {
+    static unsigned long lastDebugMillis = 0;
+    if ((long)(millis() - lastDebugMillis) >= 1000)
+    {
+        lastDebugMillis = millis();
+        Serial.print("[DEBUG] loop tick - state: ");
+        Serial.print(Assembly.state);
+        Serial.print(" wifi: ");
+        Serial.print(Assembly.wifiConnected);
+        Serial.print(" millis: ");
+        Serial.println(millis());
+    }
 
     hwLoop();
 
     if (hwSecoundTick())
     {
+        Serial.println("[DEBUG] Second tick - rendering display");
         renderDisplay("ESP32-C3 OLED", "My IP", Assembly.apIp, Assembly.apSsid);
         if (Assembly.state == StateSetup)
         {
@@ -46,13 +67,14 @@ void loop()
     // 200ms tick
     if (hwForceSampleTick())
     {
+        Serial.println("[DEBUG] Force sample tick");
         Force.loop();
     }
 
     // 50ms tick
     if (hwCentiSecoundTick())
     {
-
+        Serial.println("[DEBUG] Centi-second tick");
         pollKeyPressed();
         Assembly.processKeys();
 
