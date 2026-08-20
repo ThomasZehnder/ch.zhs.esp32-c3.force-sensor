@@ -43,23 +43,11 @@ void loop()
     // Update display queue
     displayUpdate();
 
-    static unsigned long lastDebugMillis = 0;
-    if ((long)(millis() - lastDebugMillis) >= 1000)
-    {
-        lastDebugMillis = millis();
-        Serial.print("[DEBUG] loop tick - state: ");
-        Serial.print(Assembly.state);
-        Serial.print(" wifi: ");
-        Serial.print(Assembly.wifiConnected);
-        Serial.print(" millis: ");
-        Serial.println(millis());
-    }
-
     hwLoop();
 
     if (hwSecoundTick())
     {
-        Serial.println("[DEBUG] Second tick");
+        //Serial.println("[DEBUG] Second tick");
         if (Assembly.state == StateSetup)
         {
             Serial.println("[STATE CHANGE ] StateSetup --> StateMeasure");
@@ -70,7 +58,7 @@ void loop()
     // 200ms tick
     if (hwForceSampleTick())
     {
-        Serial.println("[DEBUG] Force sample tick");
+        //Serial.println("[DEBUG] Force sample tick");
         Force.loop();
     }
 
