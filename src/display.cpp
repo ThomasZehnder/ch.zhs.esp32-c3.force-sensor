@@ -24,6 +24,8 @@ int queueTail = 0;
 int queueCount = 0;
 unsigned long currentItemEndTime = 0;
 bool isQueueMode = false;
+unsigned long lastDisplayUpdateTime = 0;
+constexpr unsigned long DISPLAY_UPDATE_INTERVAL_MS = 100;  // Max 10 updates per second
 
 void drawCenteredText(int y, const char *text)
 {
@@ -116,6 +118,12 @@ void displayUpdate()
 {
     static unsigned long lastDebug = 0;
 
+    // Throttle OLED updates to avoid blocking the loop
+    if ((long)(millis() - lastDisplayUpdateTime) < DISPLAY_UPDATE_INTERVAL_MS)
+    {
+        return;
+    }
+
     // Debug output every 2 seconds
     if ((long)(millis() - lastDebug) >= 2000)
     {
@@ -150,6 +158,7 @@ void displayUpdate()
             Serial.print(item.durationMs);
             Serial.println(" ms");
 
+            lastDisplayUpdateTime = millis();
             renderDisplay(item.line1, item.line2, item.line3, item.line4);
             currentItemEndTime = millis() + item.durationMs;
         }

@@ -21,7 +21,7 @@ void setup()
 
     Serial.println("[DEBUG] initDisplay()...");
     initDisplay();
-    renderDisplayQueued("ESP32-C3 OLED", "DeviceId", Assembly.deviceId, "...", 1000);
+    renderDisplay("ESP32-C3 OLED", "DeviceId", Assembly.deviceId, "...");
 
     Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();
