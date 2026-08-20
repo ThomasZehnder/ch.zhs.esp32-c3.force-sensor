@@ -376,6 +376,9 @@ void setupWebServer()
   pinMode(ACTIVITY_LED_PIN, OUTPUT);
   digitalWrite(ACTIVITY_LED_PIN, 1);
 
+  // Initialize WiFi mode first (required before using wifiMulti)
+  WiFi.mode(WIFI_STA);
+
   // Add WiFi credentials
   for (byte i = 0; i < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); i++)
   {
