@@ -237,7 +237,7 @@ void handleJson()
 void handleAssembly()
 {
   triggerActivity();
-  logRequest("/assembly", "GET");
+  //logRequest("/assembly", "GET");
   setAllowCors();
   server.send(200, "application/json", getAssemblyJsonImpl());
 }
