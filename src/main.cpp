@@ -59,12 +59,10 @@ void loop()
 
     if (hwSecoundTick())
     {
-        Serial.println("[DEBUG] Second tick - rendering display");
+        Serial.println("[DEBUG] Second tick");
         if (Assembly.state == StateSetup)
         {
             Serial.println("[STATE CHANGE ] StateSetup --> StateMeasure");
-            renderDisplayQueued("ESP32-C3 OLED", "My IP", Assembly.apIp, Assembly.apSsid, 1000);
-        
             Assembly.state = StateMeasure;
         }
     }

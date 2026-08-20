@@ -85,7 +85,12 @@ void initDisplay()
 
 void renderDisplay(const String &line1, const String &line2, const String &line3, const String &line4)
 {
+    Serial.println("[OLED] renderDisplay() called");
+    Serial.print("[OLED] Line1: ");
+    Serial.println(line1);
+
     oled.clearBuffer();
+    Serial.println("[OLED] Buffer cleared");
 
     oled.setFont(u8g2_font_5x8_tr);
     drawCenteredText(8, line1.c_str());
@@ -97,7 +102,9 @@ void renderDisplay(const String &line1, const String &line2, const String &line3
     drawCenteredText(28, line3.c_str());
     drawCenteredText(38, line4.c_str());
 
+    Serial.println("[OLED] Text drawn, sending buffer...");
     oled.sendBuffer();
+    Serial.println("[OLED] Buffer sent to OLED");
 }
 
 void renderDisplayQueued(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)
