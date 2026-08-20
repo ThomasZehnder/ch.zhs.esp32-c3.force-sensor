@@ -190,7 +190,6 @@ String getAssemblyJsonImpl()
   doc.clear();
   doc["hostname"] = WiFi.getHostname();
   doc["deviceId"] = Assembly.deviceId;
-  doc["accesspoint_enable"] = Assembly.cfg.accessPointEnabled;
   doc["localIp"] = Assembly.localIp;
   doc["ssid"] = Assembly.ssid;
   doc["compiledate"] = Assembly.compileDate;

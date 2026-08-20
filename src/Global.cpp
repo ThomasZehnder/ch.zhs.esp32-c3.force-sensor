@@ -54,14 +54,11 @@ void clAssembly::setupDevice()
         // Serial.println(String("Assembly.setup --> configfile number of entries: ") + doc.size());
 
         strncpy(deviceId, doc["DEVICEID"] | DEVICEID, sizeof(deviceId));
-        cfg.accessPointEnabled = doc["ACCESSPOINT"];
         cfg.scale = doc["SCALE"] | 1.0f;
         cfg.offset = doc["OFFSET"] | 0L;
         cfg.taraCalibrateKg = doc["TARA_CALIBRATE_KG"] | 1.0f;
 
-
         Serial.println(String("Assembly.setupDevice --> deviceid: ") + deviceId);
-        Serial.println(String("Assembly.setupDevice --> accesspoint_enable: ") + cfg.accessPointEnabled);
         Serial.println(String("Assembly.setupDevice --> scale: ") + cfg.scale + " offset: " + cfg.offset);
         Serial.println(String("Assembly.setupDevice --> taraCalibrateKg: ") + cfg.taraCalibrateKg);
         file.close(); // Close the file again
@@ -70,7 +67,6 @@ void clAssembly::setupDevice()
     {
         Serial.println(String("Assembly.setupDevice --> error: NO ") + filename + " found, works with default defines.");
         strcpy(deviceId, DEVICEID);
-        cfg.accessPointEnabled = true;
         cfg.scale = 1.0f;
         cfg.offset = 0L;
         cfg.taraCalibrateKg = 1.0f;
@@ -84,7 +80,6 @@ void clAssembly::saveConfig()
 
     doc.clear();
     doc["DEVICEID"] = deviceId;
-    doc["ACCESSPOINT"] = cfg.accessPointEnabled;
     doc["SCALE"] = cfg.scale;
     doc["OFFSET"] = cfg.offset;
     doc["TARA_CALIBRATE_KG"] = cfg.taraCalibrateKg;
