@@ -20,12 +20,15 @@ void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
       Serial.println(Assembly.ssid);
       Serial.print("[WIFI] IP Address: ");
       Serial.println(Assembly.localIp);
+      int rssiValue = WiFi.RSSI();
       Serial.print("[WIFI] Signal Strength: ");
-      Serial.print(WiFi.RSSI());
+      Serial.print(rssiValue);
       Serial.println(" dBm");
 
       // Show WiFi info on OLED for 2 seconds via queue
-      renderDisplayQueued("WiFi Connected", Assembly.ssid, Assembly.localIp, "", 2000);
+      char rssiStr[16];
+      snprintf(rssiStr, sizeof(rssiStr), "%d dBm", rssiValue);
+      renderDisplayQueued("WiFi Connected", Assembly.ssid, Assembly.localIp, rssiStr, 2000);
 
       byte cfgIndex = 0;
       for (cfgIndex = 0; cfgIndex < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); cfgIndex++)
