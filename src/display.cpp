@@ -8,7 +8,7 @@ namespace
 // OLED I2C pins (fix verlötet auf GPIO5=SDA, GPIO6=SCL)
 constexpr int SDA_PIN = 5;   // I2C SDA (OLED - fix verlötet)
 constexpr int SCL_PIN = 6;   // I2C SCL (OLED - fix verlötet)
-constexpr int MAX_QUEUE_SIZE = 10;
+constexpr int MAX_QUEUE_SIZE = 20;
 
 U8G2_SSD1306_72X40_ER_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
 
