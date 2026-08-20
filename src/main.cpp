@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#include "HttpServer.h"
+#include "app_webserver.h"
 
 #include "Force.h"
 #include "HwInterface.h"
@@ -22,7 +22,7 @@ void setup()
 
     wifiSetup();
 
-    httpServerSetup(); // will not longer block until WLAN connected
+    setupWebServer();
 
     hwSetup();
 
@@ -81,5 +81,5 @@ void loop()
 
     wifiLoop();
 
-    httpServerLoop();
+    handleWebServerClient();
 }

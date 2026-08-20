@@ -2,8 +2,6 @@
 
 #include <Arduino.h>
 
-using SoundTriggerCallback = bool (*)(const String &soundName);
-
-void setupWebServer(bool *filesystemMountedState, bool *wifiConnectedState, String *selectedSoundState, SoundTriggerCallback soundTriggerCallback);
+void setupWebServer();
 void handleWebServerClient();
 String getAssemblyJson();

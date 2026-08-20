@@ -5,17 +5,26 @@
 #include <LittleFS.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include <time.h>
 
-
+#include "Global.h"
 
 namespace
 {
 WebServer server(80);
-bool *filesystemMounted = nullptr;
-bool *wifiConnected = nullptr;
-String *selectedSound = nullptr;
-SoundTriggerCallback soundTrigger = nullptr;
+WiFiMulti wifiMulti;
+
+long triggerActivityTime = 0;
+String lastDownloadFilename = "-";
+
+#define ACTIVITY_LED_PIN LED_BUILTIN
+
+void triggerActivity()
+{
+  digitalWrite(ACTIVITY_LED_PIN, 0);
+  triggerActivityTime = millis();
+}
 
 void logRequest(const String &path)
 {
@@ -49,6 +58,10 @@ String getContentType(const String &path)
         return "image/svg+xml";
     if (path.endsWith(".ico"))
         return "image/x-icon";
+    if (path.endsWith(".pdf"))
+        return "application/pdf";
+    if (path.endsWith(".gz"))
+        return "application/x-gzip";
     return "text/plain";
 }
 
@@ -56,39 +69,48 @@ bool handleFileRead(String path)
 {
     logRequest(path);
 
-    if (!filesystemMounted || !*filesystemMounted)
-    {
-        Serial.println("LittleFS not mounted; cannot serve file.");
-        return false;
-    }
+    if (!path.startsWith("/"))
+        path = "/" + path;
 
     if (path.endsWith("/"))
     {
         path += "index.html";
     }
 
-    if (!LittleFS.exists(path))
+    String pathWithGz = path + ".gz";
+    String fileToOpen = path;
+
+    if (LittleFS.exists(pathWithGz))
+    {
+        fileToOpen = pathWithGz;
+    }
+    else if (!LittleFS.exists(path))
     {
         Serial.print("LittleFS file not found: ");
         Serial.println(path);
         return false;
     }
 
-    File file = LittleFS.open(path, "r");
+    File file = LittleFS.open(fileToOpen, "r");
     if (!file)
     {
         Serial.print("LittleFS open failed: ");
-        Serial.println(path);
+        Serial.println(fileToOpen);
         return false;
     }
 
     const size_t fileSize = file.size();
     const String contentType = getContentType(path);
     Serial.print("Serving file: ");
-    Serial.print(path);
+    Serial.print(fileToOpen);
     Serial.print(" (");
     Serial.print(fileSize);
     Serial.println(" bytes)");
+
+    if (path.endsWith(".json"))
+        server.sendHeader("Cache-Control", "no-store");
+    else
+        server.sendHeader("Cache-Control", "public, max-age=432000");
 
     const size_t bytesSent = server.streamFile(file, contentType);
     file.close();
@@ -113,25 +135,301 @@ void serveFileOr404(const String &path)
     }
 }
 
-void registerStaticRoute(const char *routePath)
+int httpRssi()
 {
-    server.on(routePath, HTTP_GET, [routePath]()
-              { serveFileOr404(String(routePath)); });
+  return WiFi.RSSI();
+}
+
+String state2Text(enMainState state)
+{
+  switch (state)
+  {
+  case StateSetup:
+    return "Setup";
+  case StateMeasure:
+    return "Measure";
+  case StateTare:
+    return "Tare";
+  case StateCalibrate:
+    return "Calibrate";
+  case StateReboot:
+    return "Reboot";
+  default:
+    return "Unknown";
+  }
+}
+
+String getAssemblyJsonImpl()
+{
+  doc.clear();
+  doc["hostname"] = WiFi.getHostname();
+  doc["deviceId"] = Assembly.deviceId;
+  doc["accesspoint_enable"] = Assembly.cfg.accessPointEnabled;
+  doc["localIp"] = Assembly.localIp;
+  doc["ssid"] = Assembly.ssid;
+  doc["compiledate"] = Assembly.compileDate;
+  doc["millis"] = millis();
+  doc["rssi"] = httpRssi();
+  doc["wifiConnected"] = Assembly.wifiConnected;
+  doc["state"] = Assembly.state;
+  doc["stateText"] = state2Text(Assembly.state);
+  doc["force"] = Assembly.force.value;
+  doc["offset"] = Assembly.force.sensor.get_offset();
+  doc["scale"] = Assembly.force.sensor.get_scale();
+
+  JsonArray forceHistory = doc["forceHistory"].to<JsonArray>();
+  int historyCount = Assembly.force.historyFull ? FORCE_HISTORY_SIZE : Assembly.force.historyIndex;
+  int historyStart = Assembly.force.historyFull ? Assembly.force.historyIndex : 0;
+  for (int i = 0; i < historyCount; i++)
+  {
+    forceHistory.add(Assembly.force.history[(historyStart + i) % FORCE_HISTORY_SIZE]);
+  }
+
+  doc["key_1"] = Assembly.keys[0].pressed;
+  doc["key_2"] = Assembly.keys[1].pressed;
+  doc["key_cnt_1"] = Assembly.keys[0].pressedCounter;
+  doc["key_cnt_2"] = Assembly.keys[1].pressedCounter;
+  doc["cfg_index"] = Assembly.cfg.index;
+  doc["wifi_0"] = Assembly.cfg.wifi[0].ssid;
+  doc["wifi_1"] = Assembly.cfg.wifi[1].ssid;
+  doc["wifi_2"] = Assembly.cfg.wifi[2].ssid;
+
+  String output;
+  serializeJsonPretty(doc, output);
+  return output;
+}
+
+void handleRoot()
+{
+  triggerActivity();
+  serveFileOr404("/");
+}
+
+void handleJson()
+{
+  triggerActivity();
+  setAllowCors();
+  server.send(200, "application/json", getAssemblyJsonImpl());
+}
+
+void handleAssembly()
+{
+  triggerActivity();
+  setAllowCors();
+  server.send(200, "application/json", getAssemblyJsonImpl());
+}
+
+void handleGetKeys()
+{
+  triggerActivity();
+  String output = "{";
+  output += "\"key_1\":" + String(Assembly.keys[0].pressed) + ",";
+  output += "\"key_2\":" + String(Assembly.keys[1].pressed);
+  output += "}";
+  setAllowCors();
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", output);
+}
+
+void handleReboot()
+{
+  triggerActivity();
+  server.sendHeader("Cache-Control", "no-store");
+
+  if (!server.hasArg("bootmode"))
+  {
+    Serial.println("reboot argument 'bootmode' not found!!");
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"bootmode argument missing\"}");
+    return;
+  }
+
+  String arg = server.arg("bootmode");
+  if (arg != "espreboot")
+  {
+    Serial.println("reboot argument 'bootmode' unknown: " + arg);
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"unknown bootmode\"}");
+    return;
+  }
+
+  Assembly.rebootProcess();
+  server.send(200, "application/json", "{\"status\":\"ok\",\"message\":\"rebooting\"}");
+}
+
+void handleFileUpload()
+{
+  triggerActivity();
+  HTTPUpload &upload = server.upload();
+
+  static File fsUploadFile;
+
+  if (upload.status == UPLOAD_FILE_START)
+  {
+    String filename = upload.filename;
+    if (!filename.startsWith("/"))
+      filename = "/" + filename;
+    Serial.print("handleFileUpload Name: ");
+    Serial.println(filename);
+    lastDownloadFilename = filename;
+    fsUploadFile = LittleFS.open(filename, "w");
+  }
+  else if (upload.status == UPLOAD_FILE_WRITE)
+  {
+    if (fsUploadFile)
+      fsUploadFile.write(upload.buf, upload.currentSize);
+  }
+  else if (upload.status == UPLOAD_FILE_END)
+  {
+    if (fsUploadFile)
+    {
+      fsUploadFile.close();
+      Serial.print("handleFileUpload Size: ");
+      Serial.println(upload.totalSize);
+      server.sendHeader("Location", "/success");
+      server.send(303);
+    }
+    else
+    {
+      server.send(500, "text/plain", "500: couldn't create file");
+    }
+  }
+}
+
+void handleSuccess()
+{
+  triggerActivity();
+  String msg = "<h1>Upload Result</h1>";
+  msg += "Last uploaded file: " + lastDownloadFilename;
+  msg += "<br><a href=\"/a-upload.html\">Upload next file.</a>";
+  msg += "<br><a href=\"/dir\">Pure directory</a>";
+  msg += "<br><a href=\"/\">Back to main page.</a>";
+  server.send(200, "text/html", msg);
+}
+
+void handleDir()
+{
+  triggerActivity();
+  String msg = "directory root: <table><tr><th>FILE</th><th>SIZE</th></tr>";
+  Serial.println("Listing directory: /");
+
+  File root = LittleFS.open("/");
+  if (!root || !root.isDirectory())
+  {
+    server.send(500, "text/html", "Cannot open directory");
+    return;
+  }
+
+  File file = root.openNextFile();
+  while (file)
+  {
+    if (!file.isDirectory())
+    {
+      Serial.print(" FILE: ");
+      Serial.print(file.name());
+      Serial.print(" SIZE: ");
+      char sz[200];
+      ltoa(file.size(), sz, 10);
+      msg += "<tr><td><a href=\"" + String(file.name()) + "\">" + String(file.name()) + "</a> </td><td>" + sz + "</td></tr>";
+      Serial.println(sz);
+    }
+    file = root.openNextFile();
+  }
+  Serial.println("");
+
+  msg += "</table>";
+  server.send(200, "text/html", msg);
+}
+
+void handleNotFound()
+{
+  triggerActivity();
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += server.method();
+  message += " : ";
+  message += (server.method() == HTTP_GET) ? "GET" : (server.method() == HTTP_POST) ? "POST"
+                                                 : (server.method() == HTTP_PATCH)  ? "PATCH"
+                                                                                    : "OTHER";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i = 0; i < server.args(); i++)
+  {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+  Serial.println(message);
 }
 
 } // namespace
 
-namespace
+String getAssemblyJson()
 {
-
-void assemblyJson()
-{
-    setAllowCors();
-    server.send(200, "application/json", getAssemblyJson());
+  return getAssemblyJsonImpl();
 }
 
+void setupWebServer()
+{
+  Serial.println("setupWebServer --> Start");
+
+  pinMode(ACTIVITY_LED_PIN, OUTPUT);
+  digitalWrite(ACTIVITY_LED_PIN, 1);
+
+  // Add WiFi credentials
+  for (byte i = 0; i < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); i++)
+  {
+    wifiMulti.addAP(Assembly.cfg.wifi[i].ssid, Assembly.cfg.wifi[i].pw);
+  }
+
+  // Setup HTTP routes
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/json", HTTP_GET, handleJson);
+  server.on("/assembly", HTTP_GET, handleAssembly);
+  server.on("/getkeys", HTTP_GET, handleGetKeys);
+  server.on("/reboot", HTTP_GET, handleReboot);
+  server.on("/success", HTTP_GET, handleSuccess);
+  server.on("/dir", HTTP_GET, handleDir);
+
+  server.on("/upload", HTTP_GET, []()
+  {
+    triggerActivity();
+    if (!handleFileRead("/a-upload.html"))
+      server.send(404, "text/plain", "404: Not Found");
+  });
+
+  server.on("/upload", HTTP_POST, []() { server.send(200); }, handleFileUpload);
+
+  server.onNotFound([]()
+  {
+    if (!handleFileRead(server.uri()))
+      handleNotFound();
+  });
+
+  server.begin();
+  Serial.println("setupWebServer --> HTTP server started...");
+  Serial.println("setupWebServer --> End");
+}
 
 void handleWebServerClient()
 {
-    server.handleClient();
+  // WiFi reconnect logic with throttling
+  static unsigned long nextWifiRetryMillis = 0;
+  if (!Assembly.apOnlyMode && (WiFi.status() == WL_CONNECTED || (long)(millis() - nextWifiRetryMillis) >= 0))
+  {
+    nextWifiRetryMillis = millis() + 60000;
+    wifiMulti.run();
+  }
+
+  server.handleClient();
+
+  // Activity LED management
+  if (triggerActivityTime != 0)
+  {
+    if ((long)millis() - triggerActivityTime - 200 > 0)
+    {
+      digitalWrite(ACTIVITY_LED_PIN, 1);
+      triggerActivityTime = 0;
+    }
+  }
 }
