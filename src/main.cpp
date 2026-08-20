@@ -13,6 +13,8 @@
 void setup()
 {
     Serial.begin(115200);
+    delay(300); // to enable serial out
+
     Serial.println();
     Serial.println("[DEBUG] === SETUP START ===");
 
