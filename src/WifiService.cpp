@@ -85,7 +85,7 @@ void wifiLoop()
 {
   // Check WiFi status periodically for debug
   static unsigned long lastStatusCheck = 0;
-  if ((long)(millis() - lastStatusCheck) >= 5000)
+  if ((long)(millis() - lastStatusCheck) >= 10000)
   {
     lastStatusCheck = millis();
     Serial.print("[WIFI] Status check - WiFi status: ");

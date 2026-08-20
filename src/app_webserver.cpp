@@ -9,6 +9,7 @@
 
 #include "Global.h"
 #include "display.h"
+#include "HwInterface.h"
 
 namespace
 {
@@ -17,12 +18,17 @@ WebServer server(80);
 long triggerActivityTime = 0;
 String lastDownloadFilename = "-";
 
-#define ACTIVITY_LED_PIN LED_BUILTIN
+#define ACTIVITY_LED_PIN LED_PIN
 
 void triggerActivity()
 {
   digitalWrite(ACTIVITY_LED_PIN, 0);
   triggerActivityTime = millis();
+
+  Serial.print("[LED ACTIVITY] ");
+    Serial.print(ACTIVITY_LED_PIN);
+    Serial.print(" ");
+    Serial.println(triggerActivityTime);
 }
 
 void logRequest(const String &path, const String &method = "GET")
@@ -446,7 +452,7 @@ void handleWebServerClient()
   // Activity LED management
   if (triggerActivityTime != 0)
   {
-    if ((long)millis() - triggerActivityTime - 200 > 0)
+    if ((long)millis() - triggerActivityTime - 50 > 0)
     {
       digitalWrite(ACTIVITY_LED_PIN, 1);
       triggerActivityTime = 0;

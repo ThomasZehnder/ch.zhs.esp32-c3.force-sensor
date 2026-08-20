@@ -17,6 +17,9 @@
 
 */
 
+#define LED_PIN 8  // Built-in LED on ESP32-C3-DevKitM-1
+
+
 #define KEY1_PIN       0   // Button 1 (GPIO0)
 #define KEY2_PIN       2   // Button 2 (GPIO2)
 

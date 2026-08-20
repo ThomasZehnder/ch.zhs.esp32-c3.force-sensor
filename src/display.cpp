@@ -123,20 +123,6 @@ void displayUpdate()
         return;
     }
 
-    // Debug output every 2 seconds
-    if ((long)(millis() - lastDebug) >= 2000)
-    {
-        lastDebug = millis();
-        Serial.print("[DISPLAY] Queue status - isQueueMode: ");
-        Serial.print(isQueueMode);
-        Serial.print(" queueCount: ");
-        Serial.print(queueCount);
-        Serial.print(" currentItemEndTime: ");
-        Serial.print(currentItemEndTime);
-        Serial.print(" millis: ");
-        Serial.println(millis());
-    }
-
     if (!isQueueMode || queueCount == 0)
     {
         return;
