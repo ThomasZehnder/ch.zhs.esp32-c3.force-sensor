@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "Global.h"
+#include "display.h"
 
 namespace
 {
@@ -24,10 +25,20 @@ void triggerActivity()
   triggerActivityTime = millis();
 }
 
-void logRequest(const String &path)
+void logRequest(const String &path, const String &method = "GET")
 {
-    Serial.print("HTTP request: ");
+    Serial.print("[HTTP] ");
+    Serial.print(method);
+    Serial.print(" ");
     Serial.println(path);
+
+    // Show on OLED for 500ms
+    String displayPath = path;
+    if (displayPath.length() > 16)
+    {
+        displayPath = displayPath.substring(0, 13) + "...";
+    }
+    renderDisplayQueued("[HTTP] " + method, displayPath, "", "", 500);
 }
 
 void setAllowCors()
@@ -200,12 +211,14 @@ String getAssemblyJsonImpl()
 void handleRoot()
 {
   triggerActivity();
+  logRequest("/", "GET");
   serveFileOr404("/");
 }
 
 void handleJson()
 {
   triggerActivity();
+  logRequest("/json", "GET");
   setAllowCors();
   server.send(200, "application/json", getAssemblyJsonImpl());
 }
@@ -213,6 +226,7 @@ void handleJson()
 void handleAssembly()
 {
   triggerActivity();
+  logRequest("/assembly", "GET");
   setAllowCors();
   server.send(200, "application/json", getAssemblyJsonImpl());
 }
@@ -220,6 +234,7 @@ void handleAssembly()
 void handleGetKeys()
 {
   triggerActivity();
+  logRequest("/getkeys", "GET");
   String output = "{";
   output += "\"key_1\":" + String(Assembly.keys[0].pressed) + ",";
   output += "\"key_2\":" + String(Assembly.keys[1].pressed);
@@ -232,11 +247,12 @@ void handleGetKeys()
 void handleReboot()
 {
   triggerActivity();
+  logRequest("/reboot", "GET");
   server.sendHeader("Cache-Control", "no-store");
 
   if (!server.hasArg("bootmode"))
   {
-    Serial.println("reboot argument 'bootmode' not found!!");
+    Serial.println("[HTTP] reboot argument 'bootmode' not found!!");
     server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"bootmode argument missing\"}");
     return;
   }
@@ -244,7 +260,7 @@ void handleReboot()
   String arg = server.arg("bootmode");
   if (arg != "espreboot")
   {
-    Serial.println("reboot argument 'bootmode' unknown: " + arg);
+    Serial.println("[HTTP] reboot argument 'bootmode' unknown: " + arg);
     server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"unknown bootmode\"}");
     return;
   }
@@ -265,7 +281,8 @@ void handleFileUpload()
     String filename = upload.filename;
     if (!filename.startsWith("/"))
       filename = "/" + filename;
-    Serial.print("handleFileUpload Name: ");
+    logRequest("/upload", "POST");
+    Serial.print("[HTTP] Upload filename: ");
     Serial.println(filename);
     lastDownloadFilename = filename;
     fsUploadFile = LittleFS.open(filename, "w");
@@ -280,8 +297,9 @@ void handleFileUpload()
     if (fsUploadFile)
     {
       fsUploadFile.close();
-      Serial.print("handleFileUpload Size: ");
+      Serial.print("[HTTP] Upload complete. Size: ");
       Serial.println(upload.totalSize);
+      renderDisplayQueued("[HTTP] Upload OK", lastDownloadFilename, "", "", 500);
       server.sendHeader("Location", "/success");
       server.send(303);
     }
@@ -295,6 +313,7 @@ void handleFileUpload()
 void handleSuccess()
 {
   triggerActivity();
+  logRequest("/success", "GET");
   String msg = "<h1>Upload Result</h1>";
   msg += "Last uploaded file: " + lastDownloadFilename;
   msg += "<br><a href=\"/a-upload.html\">Upload next file.</a>";
@@ -306,8 +325,9 @@ void handleSuccess()
 void handleDir()
 {
   triggerActivity();
+  logRequest("/dir", "GET");
   String msg = "directory root: <table><tr><th>FILE</th><th>SIZE</th></tr>";
-  Serial.println("Listing directory: /");
+  Serial.println("[HTTP] Listing directory: /");
 
   File root = LittleFS.open("/");
   if (!root || !root.isDirectory())

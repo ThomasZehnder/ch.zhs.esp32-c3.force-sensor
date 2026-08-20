@@ -21,7 +21,7 @@ void setup()
 
     Serial.println("[DEBUG] initDisplay()...");
     initDisplay();
-    renderDisplay("ESP32-C3 OLED", "DeviceId", Assembly.deviceId, "...");
+    renderDisplayQueued("ESP32-C3 OLED", "DeviceId", Assembly.deviceId, "...", 1000);
 
     Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();
@@ -60,9 +60,11 @@ void loop()
     if (hwSecoundTick())
     {
         Serial.println("[DEBUG] Second tick - rendering display");
-        renderDisplayQueued("ESP32-C3 OLED", "My IP", Assembly.apIp, Assembly.apSsid, 1000);
         if (Assembly.state == StateSetup)
         {
+            Serial.println("[STATE CHANGE ] StateSetup --> StateMeasure");
+            renderDisplayQueued("ESP32-C3 OLED", "My IP", Assembly.apIp, Assembly.apSsid, 1000);
+        
             Assembly.state = StateMeasure;
         }
     }
@@ -71,13 +73,13 @@ void loop()
     if (hwForceSampleTick())
     {
         Serial.println("[DEBUG] Force sample tick");
-        Force.loop();
+        //Force.loop();
     }
 
     // 50ms tick
     if (hwCentiSecoundTick())
     {
-        Serial.println("[DEBUG] Centi-second tick");
+        Serial.println("[DEBUG] START Centi-second tick");
         pollKeyPressed();
         Assembly.processKeys();
 
@@ -102,6 +104,7 @@ void loop()
                 ESP.restart();
             }
         }
+        Serial.println("[DEBUG] END Centi-second tick");
     }
 
     wifiLoop();

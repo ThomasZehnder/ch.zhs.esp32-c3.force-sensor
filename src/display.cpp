@@ -107,25 +107,48 @@ void renderDisplayQueued(const String &line1, const String &line2, const String 
 
 void displayUpdate()
 {
+    static unsigned long lastDebug = 0;
+
+    // Debug output every 2 seconds
+    if ((long)(millis() - lastDebug) >= 2000)
+    {
+        lastDebug = millis();
+        Serial.print("[DISPLAY] Queue status - isQueueMode: ");
+        Serial.print(isQueueMode);
+        Serial.print(" queueCount: ");
+        Serial.print(queueCount);
+        Serial.print(" currentItemEndTime: ");
+        Serial.print(currentItemEndTime);
+        Serial.print(" millis: ");
+        Serial.println(millis());
+    }
+
     if (!isQueueMode || queueCount == 0)
     {
         return;
     }
 
     // Check if current item should expire
-    if ((long)(millis() - currentItemEndTime) >= 0)
+    long timeUntilExpire = (long)(currentItemEndTime - millis());
+    if (timeUntilExpire <= 0)
     {
         DisplayItem item;
         if (dequeueDisplay(item))
         {
-            renderDisplay(item.line1, item.line2, item.line3, item.line4);
-            currentItemEndTime = millis() + item.durationMs;
-            Serial.print("[DISPLAY] Showing queued item. Next change in ");
+            Serial.print("[DISPLAY] Dequeued item: ");
+            Serial.print(item.line1);
+            Serial.print(" | ");
+            Serial.print(item.line2);
+            Serial.print(" | Duration: ");
             Serial.print(item.durationMs);
             Serial.println(" ms");
+
+            renderDisplay(item.line1, item.line2, item.line3, item.line4);
+            currentItemEndTime = millis() + item.durationMs;
         }
         else
         {
+            Serial.println("[DISPLAY] Queue empty, disabling queue mode");
             isQueueMode = false;
         }
     }
