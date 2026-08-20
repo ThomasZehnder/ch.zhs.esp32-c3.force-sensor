@@ -5,8 +5,9 @@
 
 namespace
 {
-constexpr int SDA_PIN = 5;
-constexpr int SCL_PIN = 6;
+// OLED I2C pins (fix verlötet auf GPIO5=SDA, GPIO6=SCL)
+constexpr int SDA_PIN = 5;   // I2C SDA (OLED - fix verlötet)
+constexpr int SCL_PIN = 6;   // I2C SCL (OLED - fix verlötet)
 constexpr int MAX_QUEUE_SIZE = 10;
 
 U8G2_SSD1306_72X40_ER_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
@@ -88,25 +89,23 @@ void initDisplay()
 void renderDisplay(const String &line1, const String &line2, const String &line3, const String &line4)
 {
     Serial.println("[OLED] renderDisplay() called");
-    Serial.print("[OLED] Line1: ");
-    Serial.println(line1);
 
-    oled.clearBuffer();
-    Serial.println("[OLED] Buffer cleared");
+    // Use firstPage/nextPage instead of sendBuffer (non-blocking approach)
+    oled.firstPage();
+    do
+    {
+        oled.setFont(u8g2_font_5x8_tr);
+        drawCenteredText(8, line1.c_str());
 
-    oled.setFont(u8g2_font_5x8_tr);
-    drawCenteredText(8, line1.c_str());
+        oled.setFont(u8g2_font_4x6_tr);
+        drawCenteredText(18, line2.c_str());
 
-    oled.setFont(u8g2_font_4x6_tr);
-    drawCenteredText(18, line2.c_str());
+        oled.setFont(u8g2_font_5x8_tr);
+        drawCenteredText(28, line3.c_str());
+        drawCenteredText(38, line4.c_str());
+    } while (oled.nextPage());
 
-    oled.setFont(u8g2_font_5x8_tr);
-    drawCenteredText(28, line3.c_str());
-    drawCenteredText(38, line4.c_str());
-
-    Serial.println("[OLED] Text drawn, sending buffer...");
-    oled.sendBuffer();
-    Serial.println("[OLED] Buffer sent to OLED");
+    Serial.println("[OLED] Display updated");
 }
 
 void renderDisplayQueued(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)

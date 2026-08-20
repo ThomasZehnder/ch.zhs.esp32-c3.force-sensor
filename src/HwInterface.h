@@ -21,7 +21,7 @@
 #define KEY2_PIN       2   // Button 2 (GPIO2)
 
 #define FORCE_DOUT_PIN 4   // HX711 data output
-#define FORCE_SCK_PIN  5   // HX711 clock
+#define FORCE_SCK_PIN  9   // HX711 clock (changed from GPIO5 to avoid OLED I2C conflict)
 
 
 void hwSetup(void);
