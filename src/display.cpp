@@ -7,8 +7,23 @@ namespace
 {
 constexpr int SDA_PIN = 5;
 constexpr int SCL_PIN = 6;
+constexpr int MAX_QUEUE_SIZE = 10;
 
 U8G2_SSD1306_72X40_ER_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+
+struct DisplayItem
+{
+    String line1, line2, line3, line4;
+    unsigned long durationMs;
+    unsigned long displayStartTime;
+};
+
+DisplayItem displayQueue[MAX_QUEUE_SIZE];
+int queueHead = 0;
+int queueTail = 0;
+int queueCount = 0;
+unsigned long currentItemEndTime = 0;
+bool isQueueMode = false;
 
 void drawCenteredText(int y, const char *text)
 {
@@ -20,6 +35,44 @@ void drawCenteredText(int y, const char *text)
         x = 0;
     }
     oled.drawStr(x, y, text);
+}
+
+void enqueueDisplay(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)
+{
+    if (queueCount >= MAX_QUEUE_SIZE)
+    {
+        Serial.println("[DISPLAY] Queue is full!");
+        return;
+    }
+
+    DisplayItem &item = displayQueue[queueTail];
+    item.line1 = line1;
+    item.line2 = line2;
+    item.line3 = line3;
+    item.line4 = line4;
+    item.durationMs = durationMs;
+    item.displayStartTime = millis();
+
+    queueTail = (queueTail + 1) % MAX_QUEUE_SIZE;
+    queueCount++;
+
+    isQueueMode = true;
+    Serial.print("[DISPLAY] Enqueued item. Queue size: ");
+    Serial.println(queueCount);
+}
+
+bool dequeueDisplay(DisplayItem &item)
+{
+    if (queueCount == 0)
+    {
+        return false;
+    }
+
+    item = displayQueue[queueHead];
+    queueHead = (queueHead + 1) % MAX_QUEUE_SIZE;
+    queueCount--;
+
+    return true;
 }
 }
 
@@ -45,4 +98,35 @@ void renderDisplay(const String &line1, const String &line2, const String &line3
     drawCenteredText(38, line4.c_str());
 
     oled.sendBuffer();
+}
+
+void renderDisplayQueued(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)
+{
+    enqueueDisplay(line1, line2, line3, line4, durationMs);
+}
+
+void displayUpdate()
+{
+    if (!isQueueMode || queueCount == 0)
+    {
+        return;
+    }
+
+    // Check if current item should expire
+    if ((long)(millis() - currentItemEndTime) >= 0)
+    {
+        DisplayItem item;
+        if (dequeueDisplay(item))
+        {
+            renderDisplay(item.line1, item.line2, item.line3, item.line4);
+            currentItemEndTime = millis() + item.durationMs;
+            Serial.print("[DISPLAY] Showing queued item. Next change in ");
+            Serial.print(item.durationMs);
+            Serial.println(" ms");
+        }
+        else
+        {
+            isQueueMode = false;
+        }
+    }
 }

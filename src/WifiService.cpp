@@ -24,8 +24,8 @@ void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
       Serial.print(WiFi.RSSI());
       Serial.println(" dBm");
 
-      // Show WiFi info on OLED for 1 second
-      renderDisplay("WiFi Connected", Assembly.ssid, Assembly.localIp, "");
+      // Show WiFi info on OLED for 2 seconds via queue
+      renderDisplayQueued("WiFi Connected", Assembly.ssid, Assembly.localIp, "", 2000);
 
       byte cfgIndex = 0;
       for (cfgIndex = 0; cfgIndex < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); cfgIndex++)

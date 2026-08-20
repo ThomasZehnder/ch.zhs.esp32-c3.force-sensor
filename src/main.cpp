@@ -40,6 +40,9 @@ void setup()
 
 void loop()
 {
+    // Update display queue
+    displayUpdate();
+
     static unsigned long lastDebugMillis = 0;
     if ((long)(millis() - lastDebugMillis) >= 1000)
     {
@@ -57,7 +60,7 @@ void loop()
     if (hwSecoundTick())
     {
         Serial.println("[DEBUG] Second tick - rendering display");
-        renderDisplay("ESP32-C3 OLED", "My IP", Assembly.apIp, Assembly.apSsid);
+        renderDisplayQueued("ESP32-C3 OLED", "My IP", Assembly.apIp, Assembly.apSsid, 1000);
         if (Assembly.state == StateSetup)
         {
             Assembly.state = StateMeasure;
