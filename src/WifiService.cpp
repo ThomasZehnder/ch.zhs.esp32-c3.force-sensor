@@ -73,11 +73,17 @@ void wifiSetup()
   {
     Serial.print("[WIFI] Starting WiFi.begin() with SSID: ");
     Serial.println(Assembly.cfg.wifi[0].ssid);
+
+    // Show on OLED immediately
+    renderDisplayQueued("[WIFI] Searching", Assembly.cfg.wifi[0].ssid, "Attempt:", "(1)/1/2", 2000);
+
     WiFi.begin(Assembly.cfg.wifi[0].ssid, Assembly.cfg.wifi[0].pw);
   }
   else
   {
     Serial.println("[WIFI] No WiFi SSID configured!");
+    renderDisplayQueued("[WIFI] Error", "No SSID", "configured", "", 3000);
+    
   }
 
   Serial.println("WifiSetup --> End");
@@ -93,7 +99,7 @@ void wifiLoop()
   static unsigned long lastStatusCheck = 0;
 
   const unsigned long WIFI_ATTEMPT_TIMEOUT_MS = 15000;  // 15 seconds per network
-  const int MAX_WIFI_ROUNDS = 3;
+  const int MAX_WIFI_ROUNDS = 2;
 
   // If already connected, nothing to do
   if (WiFi.status() == WL_CONNECTED)
@@ -145,7 +151,7 @@ void wifiLoop()
 
       // Show on OLED
       char attemptStr[16];
-      snprintf(attemptStr, sizeof(attemptStr), "%d/%d", wifiAttemptRound + 1, MAX_WIFI_ROUNDS);
+      snprintf(attemptStr, sizeof(attemptStr), "(%d)/%d/%d", currentWifiIndex +1, wifiAttemptRound + 1, MAX_WIFI_ROUNDS);
       renderDisplayQueued("[WIFI] Searching", Assembly.cfg.wifi[currentWifiIndex].ssid, "Attempt:", attemptStr, 2000);
 
       // Try to connect
