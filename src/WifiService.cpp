@@ -53,13 +53,40 @@ void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 void wifiSetup()
 {
   Serial.println("WifiSetup --> Start");
+
   WiFi.setAutoReconnect(false);
   WiFi.onEvent(onWifiEvent);
+
+  Serial.println("[WIFI] Event handlers registered");
+  Serial.print("[WIFI] WiFi mode: ");
+  Serial.println(WiFi.getMode());
+
+  // Start WiFi connection with first configured network
+  if (Assembly.cfg.wifi[0].ssid[0] != '\0')
+  {
+    Serial.print("[WIFI] Starting WiFi.begin() with SSID: ");
+    Serial.println(Assembly.cfg.wifi[0].ssid);
+    WiFi.begin(Assembly.cfg.wifi[0].ssid, Assembly.cfg.wifi[0].pw);
+  }
+  else
+  {
+    Serial.println("[WIFI] No WiFi SSID configured!");
+  }
+
   Serial.println("WifiSetup --> End");
 }
 
 
 void wifiLoop()
 {
-  // nothing, all "event based"
+  // Check WiFi status periodically for debug
+  static unsigned long lastStatusCheck = 0;
+  if ((long)(millis() - lastStatusCheck) >= 5000)
+  {
+    lastStatusCheck = millis();
+    Serial.print("[WIFI] Status check - WiFi status: ");
+    Serial.print(WiFi.status());
+    Serial.print(" | Connected: ");
+    Serial.println(Assembly.wifiConnected);
+  }
 }
