@@ -71,13 +71,13 @@ void loop()
     if (hwForceSampleTick())
     {
         Serial.println("[DEBUG] Force sample tick");
-        //Force.loop();
+        Force.loop();
     }
 
     // 50ms tick
     if (hwCentiSecoundTick())
     {
-        Serial.println("[DEBUG] START Centi-second tick");
+        //Serial.println("[DEBUG] START Centi-second tick");
         pollKeyPressed();
         Assembly.processKeys();
 
@@ -102,7 +102,7 @@ void loop()
                 ESP.restart();
             }
         }
-        Serial.println("[DEBUG] END Centi-second tick");
+        //Serial.println("[DEBUG] END Centi-second tick");
     }
 
     wifiLoop();

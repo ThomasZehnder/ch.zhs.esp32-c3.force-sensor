@@ -32,13 +32,24 @@ void logRequest(const String &path, const String &method = "GET")
     Serial.print(" ");
     Serial.println(path);
 
-    // Show on OLED for 500ms
+    // Show on OLED for 500ms with uptime
     String displayPath = path;
     if (displayPath.length() > 16)
     {
         displayPath = displayPath.substring(0, 13) + "...";
     }
-    renderDisplayQueued("[HTTP] " + method, displayPath, "", "", 500);
+
+    // Format uptime as MM:SS
+    unsigned long uptimeMs = millis();
+    unsigned long mils = uptimeMs%1000;
+    unsigned long uptimeSec = uptimeMs / 1000;
+    unsigned int minutes = (uptimeSec / 60) % 60;
+    unsigned int seconds = uptimeSec % 60;
+
+    char uptimeStr[16];
+    snprintf(uptimeStr, sizeof(uptimeStr), "%02u:%02u:%02u", minutes, seconds, mils);
+
+    renderDisplayQueued("[HTTP] " + method, displayPath, "", uptimeStr, 500);
 }
 
 void setAllowCors()
