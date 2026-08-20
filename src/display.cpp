@@ -138,8 +138,12 @@ void displayUpdate()
             Serial.print("[DISPLAY] Dequeued item: ");
             Serial.print(item.line1);
             Serial.print(" | ");
-            Serial.print(item.line2);
-            Serial.print(" | Duration: ");
+            Serial.print(item.line2);            
+            Serial.print(" | ");
+            Serial.print(item.line3);            
+            Serial.print(" | ");
+            Serial.print(item.line4);
+            Serial.print(" # Duration: ");
             Serial.print(item.durationMs);
             Serial.println(" ms");
 
