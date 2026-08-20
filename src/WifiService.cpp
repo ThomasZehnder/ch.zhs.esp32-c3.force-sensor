@@ -86,14 +86,84 @@ void wifiSetup()
 
 void wifiLoop()
 {
-  // Check WiFi status periodically for debug
+  static unsigned long lastWifiAttemptTime = 0;
+  static int currentWifiIndex = 0;
+  static int wifiAttemptRound = 0;  // 0-2 for 3 attempts through all networks
+  static bool apModeActivated = false;
   static unsigned long lastStatusCheck = 0;
+
+  const unsigned long WIFI_ATTEMPT_TIMEOUT_MS = 15000;  // 15 seconds per network
+  const int MAX_WIFI_ROUNDS = 3;
+
+  // If already connected, nothing to do
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    lastWifiAttemptTime = 0;
+    return;
+  }
+
+  // Check if we've exhausted all attempts
+  if (wifiAttemptRound >= MAX_WIFI_ROUNDS && !apModeActivated)
+  {
+    Serial.println("[WIFI] All WiFi attempts exhausted, activating Access Point mode");
+    apModeActivated = true;
+
+    // Setup Access Point
+    String apSsid = String("force_sensor_") + Assembly.deviceId;
+    if (WiFi.softAP(apSsid.c_str(), "", 1, false, 1))
+    {
+      Serial.print("[WIFI] Access Point created: ");
+      Serial.println(apSsid);
+      Assembly.apIp = WiFi.softAPIP().toString();
+      renderDisplayQueued("AP Mode Active", apSsid, Assembly.apIp, "", 3000);
+    }
+    return;
+  }
+
+  // Try next WiFi network if timeout elapsed
+  if ((long)(millis() - lastWifiAttemptTime) >= WIFI_ATTEMPT_TIMEOUT_MS)
+  {
+    lastWifiAttemptTime = millis();
+
+    // Move to next network
+    currentWifiIndex++;
+    if (currentWifiIndex >= 3)
+    {
+      currentWifiIndex = 0;
+      wifiAttemptRound++;
+    }
+
+    // Check if this network is configured
+    if (Assembly.cfg.wifi[currentWifiIndex].ssid[0] != '\0')
+    {
+      Serial.print("[WIFI] Attempting network ");
+      Serial.print(wifiAttemptRound + 1);
+      Serial.print("/");
+      Serial.print(MAX_WIFI_ROUNDS);
+      Serial.print(" - ");
+      Serial.println(Assembly.cfg.wifi[currentWifiIndex].ssid);
+
+      // Show on OLED
+      char attemptStr[16];
+      snprintf(attemptStr, sizeof(attemptStr), "%d/%d", wifiAttemptRound + 1, MAX_WIFI_ROUNDS);
+      renderDisplayQueued("[WIFI] Searching", Assembly.cfg.wifi[currentWifiIndex].ssid, "Attempt:", attemptStr, 2000);
+
+      // Try to connect
+      WiFi.begin(Assembly.cfg.wifi[currentWifiIndex].ssid, Assembly.cfg.wifi[currentWifiIndex].pw);
+    }
+  }
+
+  // Periodic status debug output
   if ((long)(millis() - lastStatusCheck) >= 10000)
   {
     lastStatusCheck = millis();
     Serial.print("[WIFI] Status check - WiFi status: ");
     Serial.print(WiFi.status());
-    Serial.print(" | Connected: ");
-    Serial.println(Assembly.wifiConnected);
+    Serial.print(" | Round: ");
+    Serial.print(wifiAttemptRound + 1);
+    Serial.print("/");
+    Serial.print(MAX_WIFI_ROUNDS);
+    Serial.print(" | Index: ");
+    Serial.println(currentWifiIndex);
   }
 }
