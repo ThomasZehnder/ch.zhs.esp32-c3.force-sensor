@@ -3,6 +3,7 @@
 #include "credentials.h"
 
 #include "Global.h"
+#include "display.h"
 
 void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 {
@@ -22,6 +23,9 @@ void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
       Serial.print("[WIFI] Signal Strength: ");
       Serial.print(WiFi.RSSI());
       Serial.println(" dBm");
+
+      // Show WiFi info on OLED for 1 second
+      renderDisplay("WiFi Connected", Assembly.ssid, Assembly.localIp, "");
 
       byte cfgIndex = 0;
       for (cfgIndex = 0; cfgIndex < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); cfgIndex++)
