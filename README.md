@@ -1,91 +1,301 @@
-# ESP32-C3 demo
+# ESP32-C3 Force Sensor
 
-## Used Hardware ESP32-C3
+Wireless force measurement system with WiFi connectivity, web interface, and real-time OLED display.
 
-![ESP32-C3 development board](images/esp32-c3-0-42-inch-oled-serial-and-wire-issues-v0-vredkxdz87se1.webp)
+## Features
 
-### DFPlayer Mini Wiring
+- **HX711 Force Sensor** integration with calibration and taring
+- **0.42" OLED Display** for real-time feedback
+- **WiFi Connectivity** with fallback to Access Point mode
+- **Web Server** with JSON API
+- **Non-blocking Display Queue** for smooth operation
+- **Configurable WiFi Networks** (3 fallback options)
+- **LittleFS** for configuration storage
 
-Current software configuration for the DFPlayer is defined in [src/dfplayer.cpp](src/dfplayer.cpp):
+## Hardware
 
-* ESP32-C3 GPIO4 -> DFPlayer RX
-* ESP32-C3 GPIO3 <- DFPlayer TX
-* ESP32-C3 GND -> DFPlayer GND
-* ESP32-C3 5V -> DFPlayer VCC
-* Speaker -> DFPlayer SPK_1 and SPK_2
+### ESP32-C3 Development Board
 
-Notes:
+- Processor: ESP32-C3 (RISC-V, single-core)
+- RAM: 400 KB
+- Flash: 4 MB
+- Interfaces: GPIO, I2C, SPI, UART
 
-* OLED already uses GPIO5 and GPIO6.
-* Onboard LED uses GPIO8.
-* Use a common GND between ESP32-C3 and DFPlayer.
-* Power the DFPlayer from 5V, not 3.3V.
-* A 1 kOhm resistor between ESP32 TX and DFPlayer RX is recommended.
-* Connect one speaker directly between SPK_1 and SPK_2.
-* Do not connect SPK_1 or SPK_2 to GND.
-* Do not use SPK_1 and SPK_2 as two separate stereo outputs.
+### HX711 Force Sensor Wiring
 
-Optional:
+Pin configuration in [src/HwInterface.h](src/HwInterface.h):
 
-* Use DFPlayer DAC_R and DAC_L instead of SPK_1 and SPK_2 when connecting an external amplifier.
-* BUSY is currently not connected in software.
+- ESP32-C3 GPIO4 → HX711 DT (Data)
+- ESP32-C3 GPIO9 → HX711 SCK (Clock)
+- ESP32-C3 GND → HX711 GND
+- ESP32-C3 3.3V → HX711 VCC
 
-### IR Sensor SR505 Wiring
+**Notes:**
+- Use a stable 3.3V power supply for the HX711
+- Keep wires short to minimize noise
+- Use shielded cables if possible
+- Load cell must be properly connected to the HX711 amplifier
+- Calibration is required before first use
 
-Current software configuration for the IR sensor is defined in [src/ir_sensor.cpp](src/ir_sensor.cpp):
+### 0.42" OLED Display Wiring
 
-* ESP32-C3 GPIO2 <- SR505 OUT
-* ESP32-C3 3.3V -> SR505 VCC
-* ESP32-C3 GND -> SR505 GND
+I2C interface configuration:
 
-Notes:
+- ESP32-C3 GPIO5 → OLED SDA
+- ESP32-C3 GPIO6 → OLED SCL
+- ESP32-C3 GND → OLED GND
+- ESP32-C3 3.3V → OLED VCC
 
-* GPIO2 is configured as INPUT_PULLUP.
-* Avoid GPIO0 on the ESP32-C3 SuperMini — it has an on-board 10 kΩ pull-down resistor that conflicts with INPUT_PULLUP and can cause crashes.
-* The SR505 output is active-HIGH: it pulls its OUT pin HIGH when motion is detected.
-* The firmware reads LOW on GPIO2 as "detected" — wire the SR505 OUT pin through an inverter (e.g. a single NPN transistor with a pull-up resistor) or adjust the polarity in [src/ir_sensor.cpp](src/ir_sensor.cpp) if the module is active-HIGH.
-* Alternatively, if your SR505 module has an open-collector output, the internal pull-up on GPIO2 is sufficient and no external components are needed.
-* Serial output is printed on positive edge (beam broken) and negative edge (beam clear) for debugging.
+**Notes:**
+- Display is I2C based (0x3C address, 72×40 resolution)
+- OLED pins are hardwired, do not change without resoldering
+- U8G2 library is used for display control
 
-### Ultrasound Output Note
+### Buttons
 
-Current software uses GPIO1 for the ultrasound PWM output.
+- GPIO0: Tare Button (measure zero point)
+- GPIO2: Calibrate Button (calibrate against known weight)
 
-Hardware note:
+**Notes:**
+- Buttons are active-LOW with internal pull-ups
+- Press and hold for 1 second to trigger action
+- Press releases key must be released before action fires
 
-* Crackling on stop was traced to unstable VCC on the connected output stage.
-* Adding supply buffering close to the load or driver helps, for example a 100 nF ceramic capacitor together with a larger bulk capacitor.
-* Keep GND short and common between the ESP32-C3 and the ultrasound driver stage.
+### LED
 
-### DFPlayer SD Card Layout
+- GPIO8: Onboard LED (HTTP activity indicator)
 
-The current software uses the recommended numbered folder structure:
+## Software Architecture
 
-* /01/001.mp3 -> sunrise
-* /01/002.mp3 -> chime
-* /01/003.mp3 -> ocean
-* /01/004.mp3 -> alarm
-* /sound?name=stop -> stop playback
+### Main Components
 
-If you want to add more groups later, use folders like /02, /03, ... with numbered files inside them.
+1. **Global State** (`src/Global.cpp`)
+   - Assembly object holds device state
+   - Force value, WiFi status, configuration
+   - Persists settings to LittleFS
 
-## Use PlatformIO
+2. **WiFi Management** (`src/WifiService.cpp`)
+   - Event-based WiFi handling
+   - Automatic reconnection
+   - Configurable networks with fallback
 
-In VSCode see elements in the buttom left corner to transfer projekt to arduino board.
+3. **Web Server** (`src/app_webserver.cpp`)
+   - HTTP endpoints for data and control
+   - JSON API responses
+   - File serving from LittleFS
 
-### WiFi Fallback Configuration
+4. **Display System** (`src/display.cpp`)
+   - Queue-based rendering
+   - Non-blocking OLED updates (max 10/sec)
+   - Support for timed messages
 
-The firmware tries the configured WiFi networks in this order during boot.
+5. **Force Sensor** (`src/Force.cpp`)
+   - HX711 driver integration
+   - Calibration and taring
+   - Rolling history buffer (50 samples, 200ms interval)
 
-The default credentials are read from [src/credentials.h](src/credentials.h). The current fallback order in firmware is:
+## Web API Endpoints
 
-* `WIFI_SSID_1`, `WIFI_PASSWORD_1`
-* `WIFI_SSID_2`, `WIFI_PASSWORD_2`
-* `WIFI_SSID_3`, `WIFI_PASSWORD_3`
+### Data Endpoints
 
-### Sample Configuration
+- `GET /` - HTML interface (index.html)
+- `GET /json` - Digital pin states (test endpoint)
+- `GET /assembly` - Complete device state (JSON)
+- `GET /getkeys` - Button states (JSON)
+
+### Control Endpoints
+
+- `GET /reboot?bootmode=espreboot` - Reboot device
+- `GET /dir` - List files on LittleFS
+- `POST /upload` - Upload files to LittleFS
+- `POST /store` - Store raw content to file
+
+### Response Format
+
+```json
+{
+  "hostname": "ESP32-C3",
+  "deviceId": "force_sensor_001",
+  "wifiConnected": true,
+  "localIp": "192.168.1.100",
+  "ssid": "MyNetwork",
+  "state": 1,
+  "stateText": "Measure",
+  "force": 9.81,
+  "offset": 0,
+  "scale": 100.0,
+  "forceHistory": [0.0, 0.1, 0.2, ...],
+  "rssi": -65
+}
+```
+
+## Configuration
+
+### WiFi Networks
+
+Edit [src/credentials.h](src/credentials.h):
 
 ```cpp
-#define WIFI_SSID_1 "mySSID"
-#define WIFI_PASSWORD_1 "myPassword"
+#define WIFI_SSID_1     "MyNetwork1"
+#define WIFI_PASSWORD_1 "password1"
+
+#define WIFI_SSID_2     "MyNetwork2"
+#define WIFI_PASSWORD_2 "password2"
+
+#define WIFI_SSID_3     "MyNetwork3"
+#define WIFI_PASSWORD_3 "password3"
 ```
+
+Firmware tries networks in order. If none connect, device falls back to Access Point mode.
+
+### HX711 Calibration
+
+1. Press Key 0 (GPIO0) to enter Tare mode
+2. Remove all load and wait 1 second
+3. Device measures zero point
+4. Place known weight on load cell
+5. Press Key 1 (GPIO2) to enter Calibrate mode
+6. Device calculates scale factor
+7. Configuration is saved to LittleFS
+
+### Device Configuration
+
+Stored in `/config_main.json`:
+
+```json
+{
+  "DEVICEID": "force_sensor_001",
+  "ACCESSPOINT": true,
+  "SCALE": 100.0,
+  "OFFSET": 0,
+  "TARA_CALIBRATE_KG": 1.0
+}
+```
+
+WiFi networks in `/config_wlan.json`:
+
+```json
+[
+  {"SSID": "Network1", "PASSWORD": "password1"},
+  {"SSID": "Network2", "PASSWORD": "password2"},
+  {"SSID": "Network3", "PASSWORD": "password3"}
+]
+```
+
+## Building and Uploading
+
+### PlatformIO
+
+```bash
+# Build for ESP32-C3
+pio run -e esp32-c3-oled
+
+# Upload to device
+pio run -e esp32-c3-oled -t upload
+
+# Monitor serial output
+pio run -e esp32-c3-oled -t monitor
+```
+
+### VS Code
+
+Use the PlatformIO sidebar (bottom left corner) for build, upload, and monitoring.
+
+## Debug Output
+
+Serial monitor shows:
+
+- WiFi connection status with IP and signal strength
+- HTTP request logging
+- HX711 sensor readings
+- Force calculation and history
+- Device state changes
+- OLED display updates (throttled to 10 updates/sec)
+
+Example:
+
+```
+[WIFI] ===== CONNECTED =====
+[WIFI] SSID: MyNetwork
+[WIFI] IP Address: 192.168.1.100
+[WIFI] Signal Strength: -65 dBm
+[HTTP] GET /assembly
+[DISPLAY] Enqueued item. Queue size: 1
+```
+
+## Pin Configuration Summary
+
+| GPIO | Function | Purpose |
+|------|----------|---------|
+| 0 | Input | Tare Button |
+| 2 | Input | Calibrate Button |
+| 4 | SPI | HX711 DT (Data) |
+| 5 | I2C | OLED SDA |
+| 6 | I2C | OLED SCL |
+| 8 | Output | LED (HTTP Activity) |
+| 9 | SPI | HX711 SCK (Clock) |
+
+## Known Limitations
+
+- Single-core processor (concurrent operations are time-sliced)
+- 400 KB RAM (limited buffer sizes)
+- OLED I2C speed limits display update frequency to ~10/sec
+- No support for concurrent HTTPS (only HTTP)
+- Force sensor history limited to 50 samples (10 seconds at 200ms interval)
+
+## Troubleshooting
+
+### OLED Not Showing Content
+
+- Check GPIO 5 (SDA) and GPIO 6 (SCL) are properly connected
+- Verify I2C pull-up resistors are present (usually built-in on OLED module)
+- Check OLED address (default: 0x3C)
+
+### HX711 Not Reading
+
+- Verify GPIO 4 (DT) and GPIO 9 (SCK) connections
+- Check HX711 power supply (needs stable 3.3V)
+- Verify load cell is properly connected to amplifier
+- Run calibration after any hardware changes
+
+### WiFi Not Connecting
+
+- Check credentials in `src/credentials.h`
+- Verify network is in 2.4 GHz mode (not 5 GHz)
+- Watch serial output for "Access Point" message if fallback mode activates
+- Connect to AP SSID: `force_sensor_XXX` with no password
+
+### Web Server Not Responding
+
+- Check WiFi is connected (see serial output)
+- Verify correct IP address
+- Ensure LittleFS filesystem is mounted (index.html is present)
+
+## Architecture Notes
+
+### Display Queue System
+
+The OLED display uses a non-blocking queue to prevent the slow I2C communication from blocking the main loop:
+
+1. Display updates are enqueued (max 10 items)
+2. `displayUpdate()` is called every loop cycle
+3. Updates are throttled to max 10/sec to maintain responsive buttons/sensors
+4. Each item shows for configurable duration (e.g., 500ms for HTTP logs, 2s for WiFi info)
+
+This keeps the force sensor and buttons responsive even while updating the display.
+
+### WiFi Event-Based Architecture
+
+WiFi management is purely event-driven:
+
+- No polling or blocking WiFi operations
+- Events: `ARDUINO_EVENT_WIFI_STA_GOT_IP`, `ARDUINO_EVENT_WIFI_STA_DISCONNECTED`
+- Event handlers update `Assembly.wifiConnected` state
+- Main loop checks state but doesn't manage connectivity
+
+## Development
+
+- **Language:** C++17
+- **Framework:** Arduino (esp32 core)
+- **Libraries:** U8G2, ArduinoJson, HX711
+- **Build System:** PlatformIO
