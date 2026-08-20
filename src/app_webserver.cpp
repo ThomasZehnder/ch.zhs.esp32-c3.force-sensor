@@ -5,7 +5,6 @@
 #include <LittleFS.h>
 #include <WebServer.h>
 #include <WiFi.h>
-#include <WiFiMulti.h>
 #include <time.h>
 
 #include "Global.h"
@@ -13,7 +12,6 @@
 namespace
 {
 WebServer server(80);
-WiFiMulti wifiMulti;
 
 long triggerActivityTime = 0;
 String lastDownloadFilename = "-";
@@ -376,14 +374,9 @@ void setupWebServer()
   pinMode(ACTIVITY_LED_PIN, OUTPUT);
   digitalWrite(ACTIVITY_LED_PIN, 1);
 
-  // Initialize WiFi mode first (required before using wifiMulti)
+  // WiFi is managed by WiFiService.cpp via event handlers
+  // Just ensure we're in station mode
   WiFi.mode(WIFI_STA);
-
-  // Add WiFi credentials
-  for (byte i = 0; i < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); i++)
-  {
-    wifiMulti.addAP(Assembly.cfg.wifi[i].ssid, Assembly.cfg.wifi[i].pw);
-  }
 
   // Setup HTTP routes
   server.on("/", HTTP_GET, handleRoot);
@@ -416,14 +409,7 @@ void setupWebServer()
 
 void handleWebServerClient()
 {
-  // WiFi reconnect logic with throttling
-  static unsigned long nextWifiRetryMillis = 0;
-  if (!Assembly.apOnlyMode && (WiFi.status() == WL_CONNECTED || (long)(millis() - nextWifiRetryMillis) >= 0))
-  {
-    nextWifiRetryMillis = millis() + 60000;
-    wifiMulti.run();
-  }
-
+  // WiFi is managed by WiFiService.cpp via event handlers
   server.handleClient();
 
   // Activity LED management

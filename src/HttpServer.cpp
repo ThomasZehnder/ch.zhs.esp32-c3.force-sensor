@@ -1,5 +1,4 @@
 #include <WiFi.h>
-#include <WiFiMulti.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <LittleFS.h>
@@ -17,7 +16,6 @@
 
 
 WebServer server(80);
-WiFiMulti wifiMulti;
 
 File fsUploadFile; // a File object to temporarily store the received file
 
@@ -298,24 +296,8 @@ void httpServerSetup(void)
   pinMode(ACTIVITY_LED_PIN, OUTPUT);
   digitalWrite(ACTIVITY_LED_PIN, 1);
 
-  for (byte i = 0; i < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); i++)
-  {
-    wifiMulti.addAP(Assembly.cfg.wifi[i].ssid, Assembly.cfg.wifi[i].pw); // add Wi-Fi networks you want to connect to, see credentials.h
-  }
-
-  Serial.println("HttpSetup --> Connecting Wifi Multi part...");
-  bool wifiConnectError = true;
-  if (wifiMulti.run(2000) == WL_CONNECTED)
-  {
-    Serial.println("HttpSetup --> connected Wifi ...");
-    wifiConnectError = false;
-    // get Wifi Informations
-    Serial.print("HttpSetup  --> IP address: ");
-    Serial.println(WiFi.localIP());
-    Assembly.wifiConnected = true;
-
-    Assembly.wlanConnectedProcess();
-  }
+  // WiFi management is now handled by app_webserver.cpp and WiFiService.cpp
+  bool wifiConnectError = !Assembly.wifiConnected;
 
   if (Assembly.cfg.accessPointEnabled || wifiConnectError)
   {
@@ -395,20 +377,7 @@ void httpServerSetup(void)
 
 void httpServerLoop(void)
 {
-  // connect to strongest wifi, and reconnect.
-  // wifiMulti.run() returns immediately while connected, but while disconnected it blocks for
-  // several seconds (WiFi scan + a connect attempt per configured network) -
-  // calling it every loop() iteration would then stall everything else (force sampling, OLED, HTTP)
-  // almost permanently, so retries are throttled while there is no connection.
-  // If no configured WiFi was found already at boot, Assembly.apOnlyMode is set and no further
-  // attempts are made at all - the device stays in Access Point only mode until rebooted.
-  static unsigned long nextWifiRetryMillis = 0;
-  if (!Assembly.apOnlyMode && (WiFi.status() == WL_CONNECTED || (long)(millis() - nextWifiRetryMillis) >= 0))
-  {
-    nextWifiRetryMillis = millis() + 60000;
-    wifiMulti.run();
-  }
-
+  // DEPRECATED: Use handleWebServerClient() from app_webserver.cpp instead
   server.handleClient();
 
   if (triggerActivityTime != 0)
