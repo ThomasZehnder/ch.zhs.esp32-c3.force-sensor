@@ -18,3 +18,4 @@ data_old/config_httpmqtt copy_2.json
 .vscode/c_cpp_properties_tze_002.json
 .vscode/launch_tze.json
 test/*.json
+data/config_wlan.json

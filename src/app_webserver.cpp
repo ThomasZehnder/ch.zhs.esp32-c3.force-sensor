@@ -374,6 +374,67 @@ void handleDir()
   server.send(200, "text/html", msg);
 }
 
+void handleFileStore()
+{
+  triggerActivity();
+  logRequest("/store", "POST");
+
+  if (!server.hasArg("plain"))
+  {
+    Serial.println("[HTTP] Store: No content in body");
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"No content in body\"}");
+    return;
+  }
+
+  if (!server.hasArg("name"))
+  {
+    Serial.println("[HTTP] Store: filename argument missing");
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"filename argument missing\"}");
+    return;
+  }
+
+  String filename = server.arg("name");
+  if (!filename.startsWith("/"))
+    filename = "/" + filename;
+
+  String content = server.arg("plain");
+
+  Serial.print("[HTTP] Store: Writing ");
+  Serial.print(content.length());
+  Serial.print(" bytes to ");
+  Serial.println(filename);
+
+  File file = LittleFS.open(filename, "w");
+  if (!file)
+  {
+    Serial.print("[HTTP] Store: Failed to open ");
+    Serial.println(filename);
+    server.send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to open file\"}");
+    return;
+  }
+
+  size_t written = file.print(content);
+  file.close();
+
+  if (written == content.length())
+  {
+    Serial.print("[HTTP] Store: Successfully wrote ");
+    Serial.print(written);
+    Serial.print(" bytes to ");
+    Serial.println(filename);
+    renderDisplayQueued("[HTTP] Store OK", filename, String(written) + " bytes", "", 500);
+    server.send(200, "application/json", "{\"status\":\"ok\",\"message\":\"File stored\"}");
+  }
+  else
+  {
+    Serial.print("[HTTP] Store: Write mismatch - expected ");
+    Serial.print(content.length());
+    Serial.print(" but wrote ");
+    Serial.println(written);
+    server.send(500, "application/json", "{\"status\":\"error\",\"message\":\"Write incomplete\"}");
+  }
+}
+
 void handleNotFound()
 {
   triggerActivity();
@@ -432,6 +493,8 @@ void setupWebServer()
   });
 
   server.on("/upload", HTTP_POST, []() { server.send(200); }, handleFileUpload);
+
+  server.on("/store", HTTP_POST, handleFileStore);
 
   server.onNotFound([]()
   {
