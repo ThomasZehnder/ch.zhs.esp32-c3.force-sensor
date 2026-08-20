@@ -146,7 +146,12 @@ Edit [src/credentials.h](src/credentials.h):
 #define WIFI_PASSWORD_3 "password3"
 ```
 
-Firmware tries networks in order. If none connect, device falls back to Access Point mode.
+**WiFi Fallback Behavior:**
+1. Firmware attempts each configured network for 15 seconds
+2. Cycles through all 3 networks twice (2 complete rounds)
+3. If all attempts fail, automatically activates **Access Point mode**
+4. OLED display shows WiFi search progress: `(index)/(round)/(max_rounds)`
+5. Total timeout: ~90 seconds (3 networks × 15 sec × 2 rounds) before AP mode
 
 ### HX711 Calibration
 
@@ -165,12 +170,15 @@ Stored in `/config_main.json`:
 ```json
 {
   "DEVICEID": "force_sensor_001",
-  "ACCESSPOINT": true,
   "SCALE": 100.0,
   "OFFSET": 0,
   "TARA_CALIBRATE_KG": 1.0
 }
 ```
+
+**Notes:**
+- Access Point mode is **always enabled** as fallback when all configured WiFi networks fail to connect
+- No configuration option needed — automatic behavior
 
 WiFi networks in `/config_wlan.json`:
 
@@ -262,8 +270,10 @@ Example:
 
 - Check credentials in `src/credentials.h`
 - Verify network is in 2.4 GHz mode (not 5 GHz)
-- Watch serial output for "Access Point" message if fallback mode activates
-- Connect to AP SSID: `force_sensor_XXX` with no password
+- Device will automatically activate **Access Point mode** after ~90 seconds if WiFi fails
+- Watch serial output for: `[WIFI] Access Point created: force_sensor_XXX`
+- Connect to AP SSID: `force_sensor_[deviceId]` (no password required)
+- Access web interface at `192.168.4.1`
 
 ### Web Server Not Responding
 
@@ -292,6 +302,11 @@ WiFi management is purely event-driven:
 - Events: `ARDUINO_EVENT_WIFI_STA_GOT_IP`, `ARDUINO_EVENT_WIFI_STA_DISCONNECTED`
 - Event handlers update `Assembly.wifiConnected` state
 - Main loop checks state but doesn't manage connectivity
+
+**Access Point Fallback:**
+- Implemented in `wifiLoop()` with MAX_WIFI_ROUNDS = 2 (hardcoded fallback strategy)
+- No configuration option needed — automatically activates after 2 rounds through all networks
+- SSID format: `force_sensor_[deviceId]` (no password required)
 
 ## Development
 
