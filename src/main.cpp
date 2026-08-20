@@ -13,6 +13,7 @@
 void setup()
 {
     Serial.begin(115200);
+    renderDisplay("ESP32-C3 OLED", "**", "****", "****");
     delay(300); // to enable serial out
 
     Serial.println();
@@ -23,7 +24,7 @@ void setup()
 
     Serial.println("[DEBUG] initDisplay()...");
     initDisplay();
-    renderDisplay("ESP32-C3 OLED", "DeviceId", Assembly.deviceId, "...");
+    renderDisplay("FORCE SENSOR", "DeviceId", Assembly.deviceId, "...");
 
     Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();
