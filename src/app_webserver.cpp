@@ -201,6 +201,16 @@ namespace
     doc["millis"] = millis();
     doc["rssi"] = httpRssi();
     doc["wifiConnected"] = Assembly.wifiConnected;
+    
+    doc["key_1"] = Assembly.keys[0].pressed;
+    doc["key_2"] = Assembly.keys[1].pressed;
+    doc["key_cnt_1"] = Assembly.keys[0].pressedCounter;
+    doc["key_cnt_2"] = Assembly.keys[1].pressedCounter;
+    doc["cfg_index"] = Assembly.cfg.index;
+    doc["wifi_0"] = Assembly.cfg.wifi[0].ssid;
+    doc["wifi_1"] = Assembly.cfg.wifi[1].ssid;
+    doc["wifi_2"] = Assembly.cfg.wifi[2].ssid;
+
     doc["state"] = Assembly.state;
     doc["stateText"] = state2Text(Assembly.state);
     doc["force"] = Assembly.force.value;
@@ -214,15 +224,6 @@ namespace
     {
       forceHistory.add(Assembly.force.history[(historyStart + i) % FORCE_HISTORY_SIZE]);
     }
-
-    doc["key_1"] = Assembly.keys[0].pressed;
-    doc["key_2"] = Assembly.keys[1].pressed;
-    doc["key_cnt_1"] = Assembly.keys[0].pressedCounter;
-    doc["key_cnt_2"] = Assembly.keys[1].pressedCounter;
-    doc["cfg_index"] = Assembly.cfg.index;
-    doc["wifi_0"] = Assembly.cfg.wifi[0].ssid;
-    doc["wifi_1"] = Assembly.cfg.wifi[1].ssid;
-    doc["wifi_2"] = Assembly.cfg.wifi[2].ssid;
 
     String output;
     serializeJsonPretty(doc, output);
