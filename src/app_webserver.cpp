@@ -23,15 +23,17 @@ namespace
   void triggerActivity()
   {
     digitalWrite(ACTIVITY_LED_PIN, 0);
+/*
     triggerActivityTime = millis();
 
-    if (triggerActivityTime < 10000) //only during first 10s 
+    if (triggerActivityTime < 10000) //only during first 10s
     {
       Serial.print("[LED ACTIVITY] ");
       Serial.print(ACTIVITY_LED_PIN);
       Serial.print(" ");
       Serial.println(triggerActivityTime);
     }
+*/
   }
 
   void logRequest(const String &path, const String &method = "GET")
