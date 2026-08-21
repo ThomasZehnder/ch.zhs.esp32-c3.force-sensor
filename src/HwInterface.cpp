@@ -112,6 +112,9 @@ void pollKeyPressed(void)
         {
             Assembly.keys[i].edge = true;
             Assembly.keys[i].pressedCounter++;
+            Serial.print("[KEY] Button ");
+            Serial.print(i);
+            Serial.println(" pressed!");
         }
         else
         {
