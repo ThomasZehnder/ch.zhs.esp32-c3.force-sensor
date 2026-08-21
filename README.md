@@ -21,6 +21,8 @@ Wireless force measurement system with WiFi connectivity, web interface, and rea
 - Flash: 4 MB
 - Interfaces: GPIO, I2C, SPI, UART
 
+![ESP32-C3 Pin Layout](images/ESP32-C3-Pin-layout.jpg)
+
 ### HX711 Force Sensor Wiring
 
 Pin configuration in [src/HwInterface.h](src/HwInterface.h):
