@@ -107,14 +107,18 @@ void pollKeyPressed(void)
     int i = 0;
     for (i = 0; i < NBRKEYS; i++)
     {
-        bool pressed = digitalRead(Assembly.keys[i].pin);
-        if ((pressed == false) && (pressed != Assembly.keys[i].pressed))
+        int pinValue = digitalRead(Assembly.keys[i].pin);
+        bool pressed = (pinValue == false);
+
+        if ((pressed == true) && (pressed != Assembly.keys[i].pressed))
         {
             Assembly.keys[i].edge = true;
             Assembly.keys[i].pressedCounter++;
             Serial.print("[KEY] Button ");
             Serial.print(i);
-            Serial.println(" pressed!");
+            Serial.print(" (GPIO");
+            Serial.print(Assembly.keys[i].pin);
+            Serial.println(") pressed!");
         }
         else
         {

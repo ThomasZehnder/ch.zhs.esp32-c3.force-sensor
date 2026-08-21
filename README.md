@@ -41,27 +41,33 @@ Pin configuration in [src/HwInterface.h](src/HwInterface.h):
 
 ### 0.42" OLED Display Wiring
 
-I2C interface configuration:
+I2C interface configuration (hardwired — **NOT changeable**):
 
-- ESP32-C3 GPIO5 → OLED SDA
-- ESP32-C3 GPIO6 → OLED SCL
+- ESP32-C3 GPIO5 → OLED SDA (fix verlötet)
+- ESP32-C3 GPIO6 → OLED SCL (fix verlötet)
 - ESP32-C3 GND → OLED GND
 - ESP32-C3 3.3V → OLED VCC
 
+**Specifications:**
+- Display: SSD1306 (0.42" OLED, 72×40 pixels)
+- I2C Address: 0x3C
+- I2C Speed: 400 kHz (configurable)
+
 **Notes:**
-- Display is I2C based (0x3C address, 72×40 resolution)
-- OLED pins are hardwired, do not change without resoldering
+- OLED pins are **permanently soldered** (fix verlötet) — do NOT attempt to change GPIO5/GPIO6 without resoldering
 - U8G2 library is used for display control
+- Display updates throttled to max 10/sec to prevent I2C blocking
 
 ### Buttons
 
-- GPIO0: Tare Button (measure zero point)
+- GPIO1: Tare Button (measure zero point)
 - GPIO2: Calibrate Button (calibrate against known weight)
 
 **Notes:**
 - Buttons are active-LOW with internal pull-ups
 - Press and hold for 1 second to trigger action
-- Press releases key must be released before action fires
+- Button must be released after 1 second for action to fire
+- GPIO0 NOT used (reserved for boot mode detection)
 
 ### LED
 
@@ -237,7 +243,7 @@ Example:
 
 | GPIO | Function | Purpose |
 |------|----------|---------|
-| 0 | Input | Tare Button |
+| 1 | Input | Tare Button |
 | 2 | Input | Calibrate Button |
 | 4 | SPI | HX711 DT (Data) |
 | 5 | I2C | OLED SDA |
