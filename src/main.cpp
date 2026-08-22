@@ -24,7 +24,7 @@ void setup()
 
     Serial.println("[DEBUG] initDisplay()...");
     initDisplay();
-    renderDisplay("FORCE SENSOR", "DeviceId", Assembly.deviceId, "...");
+    renderDisplay("FORCE SENSOR",  Assembly.deviceId, "DeviceId", "...");
 
     Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();

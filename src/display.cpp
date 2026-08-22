@@ -115,20 +115,20 @@ void renderDisplay(const String &line1, const String &line2, const String &line3
         {
             oled.setFont(u8g2_font_5x8_tr);
             drawLeftText(8, line1.c_str());
-            oled.setFont(u8g2_font_logisoso16_tf );
-            drawRightText(28, line2.c_str());
+            oled.setFont(u8g2_font_logisoso18_tf );
+            drawRightText(32, line2.c_str());
         }
         else
         {
             oled.setFont(u8g2_font_5x8_tr);
             drawCenteredText(8, line1.c_str());
 
-            oled.setFont(u8g2_font_4x6_tr);
-            drawCenteredText(18, line2.c_str());
+            oled.setFont(u8g2_font_8x13B_tf);
+            drawCenteredText(20, line2.c_str());
 
             oled.setFont(u8g2_font_5x8_tr);
-            drawCenteredText(28, line3.c_str());
-            drawCenteredText(38, line4.c_str());
+            drawCenteredText(31, line3.c_str());
+            drawCenteredText(39, line4.c_str());
         }
     } while (oled.nextPage());
 

@@ -28,7 +28,7 @@ void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
       // Show WiFi info on OLED for 2 seconds via queue
       char rssiStr[16];
       snprintf(rssiStr, sizeof(rssiStr), "%d dBm", rssiValue);
-      renderDisplayQueued("WiFi Connected", Assembly.ssid, Assembly.localIp, rssiStr, 2000);
+      renderDisplayQueued("WiFi Connected", Assembly.localIp, Assembly.ssid, rssiStr, 5000);
 
       byte cfgIndex = 0;
       for (cfgIndex = 0; cfgIndex < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); cfgIndex++)
@@ -121,7 +121,7 @@ void wifiLoop()
       Serial.print("[WIFI] Access Point created: ");
       Serial.println(apSsid);
       Assembly.apIp = WiFi.softAPIP().toString();
-      renderDisplayQueued("AP Mode Active", apSsid, Assembly.apIp, "", 3000);
+      renderDisplayQueued("AP Mode Active", Assembly.apIp, apSsid,  "", 5000);
     }
     return;
   }
