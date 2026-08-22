@@ -8,6 +8,7 @@
 #include <WiFiService.h>
 #include "credentials.h"
 #include "Force.h"
+#include "display.h"
 
 // global object definition
 clAssembly Assembly;
@@ -199,16 +200,41 @@ void clAssembly::wlanConnectedProcess()
 
 void clAssembly::processKeys()
 {
-    if (keys[0].edge)
-    {
-        // Key 0 --> show "tare now" for 1s, actual tare fires in main loop after it elapses
-        state = StateTare;
-        stateStartMillis = millis();
-    }
-    else if (keys[1].edge)
-    {
-        // Key 1 --> show "calibrate 1kg" for 1s, actual calibration fires in main loop after it elapses
-        state = StateCalibrate;
-        stateStartMillis = millis();
-    }
+
+        if (keys[0].edge)
+        {
+            // Key 0 --> show "tare now" for 1s, actual tare fires in main loop after it elapses
+            state = StateTare;
+            renderDisplayQueued("TARA 0", "Apply no force", "", "", 1000);
+            stateStartMillis = millis();
+        }
+        else if (keys[1].edge)
+        {
+            // Key 1 --> show "calibrate 1kg" for 1s, actual calibration fires in main loop after it elapses
+            state = StateCalibrate;
+            renderDisplayQueued("SCALE", "ApplyForce:", String(cfg.taraCalibrateKg).c_str(), "", 1000);
+            stateStartMillis = millis();
+        }
+
+        // 1s elapsed since the state was entered --> wait for key release before firing,
+        // so the action doesn't run while the user is still pressing (e.g. shaking the sensor)
+        bool actionDelayElapsed = (millis() - stateStartMillis) >= 1000;
+        if (actionDelayElapsed)
+        {
+            if (state == StateTare && keys[0].pressed)
+            {
+                Force.tare();
+                state = StateMeasure;
+            }
+            else if (state == StateCalibrate && keys[1].pressed)
+            {
+                Force.calibrate(cfg.taraCalibrateKg * EARTH_GRAVITY_MPS2); // calibrate against the configured reference weight
+                state = StateMeasure;
+            }
+            else if (state == StateReboot)
+            {
+                Serial.println("main.loop --> rebooting now");
+                ESP.restart();
+            }
+        }
 }
