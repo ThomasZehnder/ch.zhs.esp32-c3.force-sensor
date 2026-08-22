@@ -102,6 +102,52 @@ I2C interface configuration (hardwired — **NOT changeable**):
    - Calibration and taring
    - Rolling history buffer (50 samples, 200ms interval)
 
+### Device State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> StateSetup: Boot
+    
+    StateSetup --> StateMeasure: 1 second elapsed
+    
+    StateMeasure --> StateTare: GPIO1 pressed
+    StateMeasure --> StateCalibrate: GPIO2 pressed
+    StateMeasure --> StateReboot: /reboot endpoint called
+    
+    StateTare --> StateMeasure: 1s elapsed + button released
+    StateCalibrate --> StateMeasure: 1s elapsed + button released
+    StateReboot --> [*]: 1 second elapsed → ESP.restart()
+    
+    note right of StateSetup
+        Initial state
+        Performs setup tasks
+    end note
+    
+    note right of StateMeasure
+        Normal operation
+        Measures force continuously
+        Accepts button input
+    end note
+    
+    note right of StateTare
+        Zero-point calibration
+        Waits 1s for button release
+        Stores offset value
+    end note
+    
+    note right of StateCalibrate
+        Scale calibration
+        Waits 1s for button release
+        Calculates scale factor
+    end note
+    
+    note right of StateReboot
+        Initiated by REST API
+        Displays "rebooting..."
+        Restarts device after 1s
+    end note
+```
+
 ## Web API Endpoints
 
 ### Data Endpoints
