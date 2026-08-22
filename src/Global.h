@@ -5,7 +5,7 @@
 #include <ArduinoJson.h>
 #include <HX711.h>
 
-#define CPP_VERSION "V1.00.00 "
+#define CPP_VERSION "V1.10.00 "
 
 struct tstCfgWifi
 {
@@ -19,7 +19,7 @@ struct tstCfg
     tstCfgWifi wifi[NBRCONNECTIONS];
     float scale = 1.0;         // HX711 calibration factor (counts per Newton), persisted via config_main.json, SCALE
     long offset = 0;           // HX711 raw offset, persisted via config_main.json, OFFSET
-    float taraCalibrateKg = 1.0; // reference weight used for calibration, configurable via config_main.json, TARA_CALIBRATE_KG
+    float taraCalibrateNewton = 9.81; // reference force used for calibration, configurable via config_main.json, TARA_CALIBRATE_NEWTON
     byte index = 0; // index depends on found WIFI Network
 };
 

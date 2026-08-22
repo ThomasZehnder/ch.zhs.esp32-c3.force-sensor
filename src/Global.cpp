@@ -57,11 +57,11 @@ void clAssembly::setupDevice()
         strncpy(deviceId, doc["DEVICEID"] | DEVICEID, sizeof(deviceId));
         cfg.scale = doc["SCALE"] | 1.0f;
         cfg.offset = doc["OFFSET"] | 0L;
-        cfg.taraCalibrateKg = doc["TARA_CALIBRATE_KG"] | 1.0f;
+        cfg.taraCalibrateNewton = doc["TARA_CALIBRATE_NEWTON"] | 40.0f;
 
         Serial.println(String("Assembly.setupDevice --> deviceid: ") + deviceId);
         Serial.println(String("Assembly.setupDevice --> scale: ") + cfg.scale + " offset: " + cfg.offset);
-        Serial.println(String("Assembly.setupDevice --> taraCalibrateKg: ") + cfg.taraCalibrateKg);
+        Serial.println(String("Assembly.setupDevice --> taraCalibrateNewton: ") + cfg.taraCalibrateNewton);
         file.close(); // Close the file again
     }
     else
@@ -70,7 +70,7 @@ void clAssembly::setupDevice()
         strcpy(deviceId, DEVICEID);
         cfg.scale = 1.0f;
         cfg.offset = 0L;
-        cfg.taraCalibrateKg = 1.0f;
+        cfg.taraCalibrateNewton = 9.81f;
     }
 }
 
@@ -83,7 +83,7 @@ void clAssembly::saveConfig()
     doc["DEVICEID"] = deviceId;
     doc["SCALE"] = cfg.scale;
     doc["OFFSET"] = cfg.offset;
-    doc["TARA_CALIBRATE_KG"] = cfg.taraCalibrateKg;
+    doc["TARA_CALIBRATE_NEWTON"] = cfg.taraCalibrateNewton;
 
     File file = LittleFS.open(filename, "w");
     if (file)
@@ -210,9 +210,9 @@ void clAssembly::processKeys()
         }
         else if (keys[1].edge)
         {
-            // Key 1 --> show "calibrate 1kg" for 1s, actual calibration fires in main loop after it elapses
+            // Key 1 --> show reference force for 1s, actual calibration fires in main loop after it elapses
             state = StateCalibrate;
-            renderDisplayQueued("SCALE", "ApplyForce:", String(cfg.taraCalibrateKg).c_str(), "", 1000);
+            renderDisplayQueued("SCALE", "ApplyForce:", String(cfg.taraCalibrateNewton).c_str(), "", 1000);
             stateStartMillis = millis();
         }
 
@@ -228,7 +228,7 @@ void clAssembly::processKeys()
             }
             else if (state == StateCalibrate && keys[1].pressed)
             {
-                Force.calibrate(cfg.taraCalibrateKg * EARTH_GRAVITY_MPS2); // calibrate against the configured reference weight
+                Force.calibrate(cfg.taraCalibrateNewton); // calibrate against the configured reference force
                 state = StateMeasure;
             }
             else if (state == StateReboot)

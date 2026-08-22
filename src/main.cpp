@@ -63,6 +63,10 @@ void loop()
     {
         // Serial.println("[DEBUG] Force sample tick");
         Force.loop();
+        if (Assembly.state==StateMeasure) {
+            String sForce = String(Assembly.force.value) + "N";
+            renderDisplayQueued("Force", sForce.c_str(), "", "", 10);
+        }
     }
 
     // 50ms tick

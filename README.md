@@ -212,7 +212,7 @@ Edit [src/credentials.h](src/credentials.h):
 1. Press Key 0 (GPIO0) to enter Tare mode
 2. Remove all load and wait 1 second
 3. Device measures zero point
-4. Place known weight on load cell
+4. Apply a known reference force (in Newton, configured via `TARA_CALIBRATE_NEWTON`) to the load cell
 5. Press Key 1 (GPIO2) to enter Calibrate mode
 6. Device calculates scale factor
 7. Configuration is saved to LittleFS
@@ -226,7 +226,7 @@ Stored in `/config_main.json`:
   "DEVICEID": "force_sensor_001",
   "SCALE": 100.0,
   "OFFSET": 0,
-  "TARA_CALIBRATE_KG": 1.0
+  "TARA_CALIBRATE_NEWTON": 40
 }
 ```
 
