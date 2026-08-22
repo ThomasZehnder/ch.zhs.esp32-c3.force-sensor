@@ -57,6 +57,17 @@ namespace
         oled.drawStr(x, y, text);
     }
 
+    // tries preferredFont first; falls back to fallbackFont if the text is too wide to fit the display
+    void drawCenteredTextFit(int y, const char *text, const uint8_t *preferredFont, const uint8_t *fallbackFont)
+    {
+        oled.setFont(preferredFont);
+        if (oled.getStrWidth(text) > oled.getDisplayWidth())
+        {
+            oled.setFont(fallbackFont);
+        }
+        drawCenteredText(y, text);
+    }
+
     void enqueueDisplay(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)
     {
         if (queueCount >= MAX_QUEUE_SIZE)
@@ -116,15 +127,18 @@ void renderDisplay(const String &line1, const String &line2, const String &line3
             oled.setFont(u8g2_font_5x8_tr);
             drawLeftText(8, line1.c_str());
             oled.setFont(u8g2_font_logisoso18_tf );
-            drawRightText(32, line2.c_str());
+            drawRightText(30, line2.c_str());
+            
+            oled.setFont(u8g2_font_5x8_tr);
+            drawCenteredText(31, line3.c_str());
+            drawCenteredText(39, line4.c_str());
         }
         else
         {
             oled.setFont(u8g2_font_5x8_tr);
             drawCenteredText(8, line1.c_str());
 
-            oled.setFont(u8g2_font_8x13B_tf);
-            drawCenteredText(20, line2.c_str());
+            drawCenteredTextFit(20, line2.c_str(), u8g2_font_8x13B_tf, u8g2_font_6x10_tf);
 
             oled.setFont(u8g2_font_5x8_tr);
             drawCenteredText(31, line3.c_str());

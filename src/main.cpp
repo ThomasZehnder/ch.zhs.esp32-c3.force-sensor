@@ -65,7 +65,7 @@ void loop()
         Force.loop();
         if (Assembly.state==StateMeasure) {
             String sForce = String(Assembly.force.value, 1) + "N";
-            renderDisplayQueued("#Force", sForce.c_str(), "", "", 10);
+            renderDisplayQueued("#Force", sForce.c_str(), "", Assembly.localIp, 10);
         }
     }
 
