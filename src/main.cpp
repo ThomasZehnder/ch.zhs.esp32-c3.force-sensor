@@ -24,7 +24,7 @@ void setup()
 
     Serial.println("[DEBUG] initDisplay()...");
     initDisplay();
-    renderDisplay("FORCE SENSOR",  Assembly.deviceId, "DeviceId", "...");
+    renderDisplay("FORCE SENSOR", Assembly.deviceId, "DeviceId", "...");
 
     Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();
@@ -63,10 +63,20 @@ void loop()
     {
         // Serial.println("[DEBUG] Force sample tick");
         Force.loop();
-        if ((Assembly.state==StateMeasure)&&(Assembly.wifiConnected)) {
+        if ((Assembly.state == StateMeasure)){
             String sForce = String(Assembly.force.value, 1) + "N";
-            renderDisplayQueued("#Force", sForce.c_str(), "", Assembly.localIp, 10);
-        }
+            if (Assembly.wifiConnected)
+            {
+                renderDisplayQueued("#Force", sForce.c_str(), "", Assembly.localIp, 10);
+            }
+            else if  (Assembly.apIp != "")
+            {
+                renderDisplayQueued("#Force", sForce.c_str(), "", Assembly.apIp, 10);
+            } else {
+                renderDisplayQueued("#Force", sForce.c_str(), "", "not WIFI...", 10);
+                
+            }
+    }
     }
 
     // 50ms tick
@@ -75,7 +85,7 @@ void loop()
         // Serial.println("[DEBUG] START Centi-second tick");
         pollKeyPressed();
 
-        Assembly.processKeys(); //transition do calibrate and tara force sensor
+        Assembly.processKeys(); // transition do calibrate and tara force sensor
 
         // Serial.println("[DEBUG] END Centi-second tick");
     }
