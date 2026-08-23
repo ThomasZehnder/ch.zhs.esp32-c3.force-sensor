@@ -8,38 +8,100 @@
 
     <script>
 
-        function loadMain(articleUrl, asideUrl, param) {
-            loadArticle(articleUrl, param);
-            loadAside(asideUrl);
+        // ---- Router -------------------------------------------------------
+        // The app has two nesting levels:
+        //   1. Section  -> drives <aside id="asideId"> (the sub-menu, e.g. aa-home.html)
+        //   2. Page     -> drives <article id="articleId"> (the content, e.g. a-home.html)
+        // ROUTES is the single place mapping a route name to that pair, plus an
+        // optional default param and an init callback that runs once the article
+        // markup is in the DOM (replaces the old url.startsWith(...) dispatch).
+        const ROUTES = {
+            home: {
+                article: 'a-home.html', aside: 'aa-home.html',
+                init: function () { startTimerFn(loadAssemblyTable, 500); }
+            },
+            diagnose: {
+                article: 'a-diagnose.html', aside: 'aa-home.html',
+                init: function () { startTimer(['/assembly'], ['assemblyId'], 500); }
+            },
+            files: {
+                article: 'a-files.html', aside: 'aa-files.html', defaultParam: '/dir',
+                init: function (param) { loadElement(param, 'preId'); }
+            },
+            upload: {
+                article: 'a-upload.html', aside: 'aa-files.html'
+            },
+            config: {
+                article: 'a-config.html', aside: 'aa-config.html', defaultParam: 'config_main.json',
+                init: function (param) { loadEditor(param); setTitle('Edit ' + param); }
+            }
+        };
+
+        let currentAside = null;
+
+        // navigates to a route; updates location.hash, which triggers handleHashChange()
+        function navigate(routeName, param) {
+            const route = ROUTES[routeName];
+            if (!route) {
+                console.error('navigate: unknown route "' + routeName + '"');
+                return;
+            }
+            if (param === undefined) {
+                param = route.defaultParam;
+            }
+            const hash = '#' + routeName + (param !== undefined ? ':' + encodeURIComponent(param) : '');
+            if (location.hash === hash) {
+                renderRoute(routeName, param); // same hash (e.g. re-clicked) - render anyway
+            } else {
+                location.hash = hash;
+            }
         }
 
-        function loadArticle(url, param) {
+        // reads location.hash and renders the matching route - runs on load, on hashchange
+        // (nav links, back/forward button) and covers deep-linking / page reload
+        function handleHashChange() {
+            const raw = location.hash.replace(/^#/, '');
+            const separator = raw.indexOf(':');
+            const routeName = (separator === -1 ? raw : raw.substring(0, separator)) || 'home';
+            const encodedParam = separator === -1 ? undefined : raw.substring(separator + 1);
+
+            const route = ROUTES[routeName];
+            if (!route) {
+                console.warn('handleHashChange: unknown route "' + routeName + '", falling back to home');
+                navigate('home');
+                return;
+            }
+
+            const param = encodedParam !== undefined ? decodeURIComponent(encodedParam) : route.defaultParam;
+            renderRoute(routeName, param);
+        }
+
+        function renderRoute(routeName, param) {
+            const route = ROUTES[routeName];
+            loadArticle(route.article).then(function () {
+                if (route.init) {
+                    route.init(param);
+                }
+            });
+
+            if (route.aside !== currentAside) {
+                currentAside = route.aside;
+                loadAside(route.aside);
+            }
+        }
+
+        window.addEventListener('hashchange', handleHashChange);
+        // ---------------------------------------------------------------
+
+        function loadArticle(url) {
             stopTimer();
-            fetch(url)
+            return fetch(url)
                 .then(function (response) {
                     return response.text();
                 })
                 .then(function (html) {
-                    //console.log(html);
                     const myArticle = document.getElementById("articleId");
                     myArticle.innerHTML = html;
-
-                    //execude page initializizer
-                    //console.log("loaded url: ", url);
-                    if (url.startsWith('a-home')) {
-                        startTimerFn(loadAssemblyTable, 500);
-                    }
-                    else if (url.startsWith('a-diagnose')) {
-                        startTimer(['/assembly'], ['assemblyId'], 500);
-                    }
-                    else if (url.startsWith('a-config')) {
-                        loadEditor(param);
-                        setTitle(String("Edit ") + param);
-                    }
-                    else if (url.startsWith('a-files')) {
-                        console.log("Load files: ", param)
-                        loadElement(param, "preId");
-                    }
                 });
         }
 
@@ -432,17 +494,16 @@
     </script>
 </head>
 
-<body onload="loadMain('a-home.html', 'aa-home.html',0);">
+<body onload="handleHashChange();">
     <header>
         <h1>ZHS Force Sensor with ESP32-C3</h1>
     </header>
     <nav>
         <ul>
-            <li class="menu"><a class="button" onclick="loadMain('a-home.html', 'aa-home.html');">Home</a></li>
-            <li class="menu"><a class="button" onclick="loadMain('a-files.html', 'aa-files.html', '/dir');">Files</a>
+            <li class="menu"><a class="button" onclick="navigate('home');">Home</a></li>
+            <li class="menu"><a class="button" onclick="navigate('files');">Files</a>
             </li>
-            <li class="menu"><a class="button"
-                    onclick="loadMain('a-config.html', 'aa-config.html','config_main.json');">Config</a>
+            <li class="menu"><a class="button" onclick="navigate('config');">Config</a>
             </li>
 
         </ul>
