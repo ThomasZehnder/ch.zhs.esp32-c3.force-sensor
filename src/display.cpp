@@ -114,9 +114,9 @@ void initDisplay()
     oled.setFont(u8g2_font_5x8_tr);
 }
 
-void renderDisplay(const String &line1, const String &line2, const String &line3, const String &line4)
+void displayRender(const String &line1, const String &line2, const String &line3, const String &line4)
 {
-    //Serial.println("[OLED] renderDisplay() called");
+    //Serial.println("[OLED] displayRender() called");
 
     // Use firstPage/nextPage instead of sendBuffer (non-blocking approach)
     oled.firstPage();
@@ -194,7 +194,7 @@ void displayUpdate()
             Serial.println(" ms");
 
             lastDisplayUpdateTime = millis();
-            renderDisplay(item.line1, item.line2, item.line3, item.line4);
+            displayRender(item.line1, item.line2, item.line3, item.line4);
             currentItemEndTime = millis() + item.durationMs;
         }
         else
