@@ -203,9 +203,10 @@ Edit [src/credentials.h](src/credentials.h):
 **WiFi Fallback Behavior:**
 1. Firmware attempts each configured network for 15 seconds
 2. Cycles through all 3 networks twice (2 complete rounds)
-3. If all attempts fail, automatically activates **Access Point mode**
+3. If all attempts fail, automatically activates **Access Point mode** (device switches to combined AP+STA mode)
 4. OLED display shows WiFi search progress: `(index)/(round)/(max_rounds)`
 5. Total timeout: ~90 seconds (3 networks × 15 sec × 2 rounds) before AP mode
+6. Even after AP mode is active, the firmware keeps retrying the configured networks every 15 seconds in the background — if one becomes reachable, the device connects to it while the Access Point stays up
 
 ### HX711 Calibration
 
