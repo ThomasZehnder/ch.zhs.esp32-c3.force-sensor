@@ -63,17 +63,17 @@ void loop()
     {
         // Serial.println("[DEBUG] Force sample tick");
         Force.loop();
-        if ((Assembly.state == StateMeasure)){
+        if ((Assembly.state == StateMeasure) && isDisplayQueueEmpty()) {
             String sForce = String(Assembly.force.value, 1) + "N";
             if (Assembly.wifiConnected)
             {
-                renderDisplayQueued("#Force", sForce.c_str(), "", Assembly.localIp, 10);
+                displayRenderQueued("#Force", sForce.c_str(), "", Assembly.localIp, 10);
             }
             else if  (Assembly.apIp != "")
             {
-                renderDisplayQueued("#Force", sForce.c_str(), "", Assembly.apIp, 10);
+                displayRenderQueued("#Force", sForce.c_str(), "", Assembly.apIp, 10);
             } else {
-                renderDisplayQueued("#Force", sForce.c_str(), "", "not WIFI...", 10);
+                displayRenderQueued("#Force", sForce.c_str(), "", "not WIFI...", 10);
                 
             }
     }

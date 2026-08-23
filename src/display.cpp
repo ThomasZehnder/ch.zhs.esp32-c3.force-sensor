@@ -149,9 +149,14 @@ void renderDisplay(const String &line1, const String &line2, const String &line3
     //Serial.println("[OLED] Display updated");
 }
 
-void renderDisplayQueued(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)
+void displayRenderQueued(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)
 {
     enqueueDisplay(line1, line2, line3, line4, durationMs);
+}
+
+bool isDisplayQueueEmpty()
+{
+    return queueCount == 0;
 }
 
 void displayUpdate()

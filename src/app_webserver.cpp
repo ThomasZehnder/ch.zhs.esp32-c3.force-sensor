@@ -60,7 +60,7 @@ namespace
     char uptimeStr[16];
     snprintf(uptimeStr, sizeof(uptimeStr), "%02u:%02u:%02u", minutes, seconds, mils);
 
-    renderDisplayQueued("[HTTP] " + method, displayPath, "", uptimeStr, 500);
+    displayRenderQueued("[HTTP] " + method, displayPath, "", uptimeStr, 500);
   }
 
   void setAllowCors()
@@ -321,7 +321,7 @@ namespace
         fsUploadFile.close();
         Serial.print("[HTTP] Upload complete. Size: ");
         Serial.println(upload.totalSize);
-        renderDisplayQueued("[HTTP] Upload OK", lastDownloadFilename, "", "", 500);
+        displayRenderQueued("[HTTP] Upload OK", lastDownloadFilename, "", "", 500);
         server.sendHeader("Location", "/success");
         server.send(303);
       }
@@ -427,7 +427,7 @@ namespace
       Serial.print(written);
       Serial.print(" bytes to ");
       Serial.println(filename);
-      renderDisplayQueued("[HTTP] Store OK", filename, String(written) + " bytes", "", 500);
+      displayRenderQueued("[HTTP] Store OK", filename, String(written) + " bytes", "", 500);
       server.send(200, "application/json", "{\"status\":\"ok\",\"message\":\"File stored\"}");
     }
     else

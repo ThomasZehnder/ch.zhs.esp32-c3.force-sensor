@@ -205,14 +205,14 @@ void clAssembly::processKeys()
         {
             // Key 0 --> show "tare now" for 1s, actual tare fires in main loop after it elapses
             state = StateTare;
-            renderDisplayQueued("TARA 0", "Apply no force", "", "", 1000);
+            displayRenderQueued("TARA 0", "Apply no force", "", "", 1000);
             stateStartMillis = millis();
         }
         else if (keys[1].edge)
         {
             // Key 1 --> show reference force for 1s, actual calibration fires in main loop after it elapses
             state = StateCalibrate;
-            renderDisplayQueued("SCALE", "ApplyForce:", String(cfg.taraCalibrateNewton).c_str(), "", 1000);
+            displayRenderQueued("SCALE", "ApplyForce:", String(cfg.taraCalibrateNewton).c_str(), "", 1000);
             stateStartMillis = millis();
         }
 
