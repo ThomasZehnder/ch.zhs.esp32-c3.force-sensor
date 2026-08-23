@@ -182,6 +182,8 @@ void displayUpdate()
         if (dequeueDisplay(item))
         {
             Serial.print("[DISPLAY] Dequeued item: ");
+            Serial.print(queueCount);
+            Serial.print(" - ");
             Serial.print(item.line1);
             Serial.print(" | ");
             Serial.print(item.line2);
