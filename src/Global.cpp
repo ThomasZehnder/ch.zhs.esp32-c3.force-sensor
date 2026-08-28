@@ -205,7 +205,7 @@ void clAssembly::processKeys()
         {
             // Key 0 --> show "tare now" for 1s, actual tare fires in main loop after it elapses
             state = StateTare;
-            displayRenderQueued("TARA 0", "Apply no force", "", "", 1000);
+            displayRenderQueued("TARA 0", "Apply ", "no force", "", 1000);
             stateStartMillis = millis();
         }
         else if (keys[1].edge)
