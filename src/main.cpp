@@ -9,6 +9,7 @@
 
 #include "Global.h"
 #include "display.h"
+#include "TftDisplay.h"
 
 void setup()
 {
@@ -25,6 +26,9 @@ void setup()
     Serial.println("[DEBUG] initDisplay()...");
     initDisplay();
     displayRender("FORCE SENSOR", Assembly.deviceId, "DeviceId", "...");
+
+    Serial.println("[DEBUG] tftDisplaySetup()...");
+    tftDisplaySetup();
 
     Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();
@@ -63,6 +67,10 @@ void loop()
     {
         // Serial.println("[DEBUG] Force sample tick");
         Force.loop();
+        if (Assembly.state == StateMeasure)
+        {
+            tftDisplayShowForce(Assembly.force.value);
+        }
         if ((Assembly.state == StateMeasure) && isDisplayQueueEmpty()) {
             String sForce = String(Assembly.force.value, 1) + "N";
             if (Assembly.wifiConnected)
