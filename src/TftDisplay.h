@@ -5,4 +5,6 @@ void tftDisplaySetup();
 // shows the numeric force value plus a line chart of the given history (oldest to newest,
 // same array shape as Assembly.force.history / the web UI's forceHistory chart)
 void tftDisplayShowForce(float forceNewton, const float *history, int historyCount);
-void tftDisplayTest(); // fills the screen and prints a test message - call once after tftDisplaySetup() to verify wiring
+// fills the screen with a startup banner (title + version/build info) - call once after
+// tftDisplaySetup() to verify wiring
+void tftDisplayTest(const char *versionInfo);

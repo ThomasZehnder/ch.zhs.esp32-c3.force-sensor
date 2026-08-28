@@ -118,10 +118,14 @@ void tftDisplayShowForce(float forceNewton, const float *history, int historyCou
     drawChart(history, historyCount, CHART_X, CHART_Y, CHART_W, CHART_H, GC9A01A_CYAN);
 }
 
-void tftDisplayTest()
+void tftDisplayTest(const char *versionInfo)
 {
-    tft.fillScreen(GC9A01A_RED);
-    tft.setTextColor(GC9A01A_WHITE);
+    tft.fillScreen(GC9A01A_BLACK);
+    tft.setTextColor(GC9A01A_MAGENTA);
     tft.setTextSize(3);
-    drawCenteredAt("TFT TEST", DISPLAY_SIZE / 2);
+    drawCenteredAt("Force Sensor", 100);
+
+    tft.setTextColor(GC9A01A_WHITE);
+    tft.setTextSize(1);
+    drawCenteredAt(versionInfo, 140);
 }

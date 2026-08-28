@@ -29,7 +29,7 @@ void setup()
 
     Serial.println("[DEBUG] tftDisplaySetup()...");
     tftDisplaySetup();
-    tftDisplayTest();
+    tftDisplayTest(Assembly.compileDate.c_str());
     delay(1000); // hold the test screen for 1s so it's visible before normal operation starts
 
     Serial.println("[DEBUG] wifiSetup()...");
