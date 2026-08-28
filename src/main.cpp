@@ -71,7 +71,15 @@ void loop()
         Force.loop();
         if (Assembly.state == StateMeasure)
         {
-            tftDisplayShowForce(Assembly.force.value);
+            // unwrap the circular history buffer into chronological (oldest to newest) order
+            float orderedHistory[FORCE_HISTORY_SIZE];
+            int historyCount = Assembly.force.historyFull ? FORCE_HISTORY_SIZE : Assembly.force.historyIndex;
+            int historyStart = Assembly.force.historyFull ? Assembly.force.historyIndex : 0;
+            for (int i = 0; i < historyCount; i++)
+            {
+                orderedHistory[i] = Assembly.force.history[(historyStart + i) % FORCE_HISTORY_SIZE];
+            }
+            tftDisplayShowForce(Assembly.force.value, orderedHistory, historyCount);
         }
         if ((Assembly.state == StateMeasure) && isDisplayQueueEmpty()) {
             String sForce = String(Assembly.force.value, 1) + "N";
