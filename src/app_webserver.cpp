@@ -15,26 +15,7 @@ namespace
 {
   WebServer server(80);
 
-  long triggerActivityTime = 0;
   String lastDownloadFilename = "-";
-
-#define ACTIVITY_LED_PIN LED_PIN
-
-  void triggerActivity()
-  {
-    digitalWrite(ACTIVITY_LED_PIN, 0);
-/*
-    triggerActivityTime = millis();
-
-    if (triggerActivityTime < 10000) //only during first 10s
-    {
-      Serial.print("[LED ACTIVITY] ");
-      Serial.print(ACTIVITY_LED_PIN);
-      Serial.print(" ");
-      Serial.println(triggerActivityTime);
-    }
-*/
-  }
 
   void logRequest(const String &path, const String &method = "GET")
   {
@@ -232,14 +213,12 @@ namespace
 
   void handleRoot()
   {
-    triggerActivity();
     logRequest("/", "GET");
     serveFileOr404("/");
   }
 
   void handleJson()
   {
-    triggerActivity();
     logRequest("/json", "GET");
     setAllowCors();
     server.send(200, "application/json", getAssemblyJsonImpl());
@@ -247,7 +226,6 @@ namespace
 
   void handleAssembly()
   {
-    triggerActivity();
     // logRequest("/assembly", "GET");
     setAllowCors();
     server.send(200, "application/json", getAssemblyJsonImpl());
@@ -255,7 +233,6 @@ namespace
 
   void handleGetKeys()
   {
-    triggerActivity();
     logRequest("/getkeys", "GET");
     String output = "{";
     output += "\"key_1\":" + String(Assembly.keys[0].pressed) + ",";
@@ -268,7 +245,6 @@ namespace
 
   void handleReboot()
   {
-    triggerActivity();
     logRequest("/reboot", "GET");
     server.sendHeader("Cache-Control", "no-store");
 
@@ -293,7 +269,6 @@ namespace
 
   void handleFileUpload()
   {
-    triggerActivity();
     HTTPUpload &upload = server.upload();
 
     static File fsUploadFile;
@@ -334,7 +309,6 @@ namespace
 
   void handleSuccess()
   {
-    triggerActivity();
     logRequest("/success", "GET");
     String msg = "<h1>Upload Result</h1>";
     msg += "Last uploaded file: " + lastDownloadFilename;
@@ -346,7 +320,6 @@ namespace
 
   void handleDir()
   {
-    triggerActivity();
     logRequest("/dir", "GET");
     String msg = "directory root: <table><tr><th>FILE</th><th>SIZE</th></tr>";
     Serial.println("[HTTP] Listing directory: /");
@@ -381,7 +354,6 @@ namespace
 
   void handleFileStore()
   {
-    triggerActivity();
     logRequest("/store", "POST");
 
     if (!server.hasArg("plain"))
@@ -442,7 +414,6 @@ namespace
 
   void handleNotFound()
   {
-    triggerActivity();
     String message = "File Not Found\n\n";
     message += "URI: ";
     message += server.uri();
@@ -474,9 +445,6 @@ void setupWebServer()
 {
   Serial.println("setupWebServer --> Start");
 
-  pinMode(ACTIVITY_LED_PIN, OUTPUT);
-  digitalWrite(ACTIVITY_LED_PIN, 1);
-
   // WiFi is managed by WiFiService.cpp via event handlers
   // Just ensure we're in station mode
   WiFi.mode(WIFI_STA);
@@ -492,7 +460,6 @@ void setupWebServer()
 
   server.on("/upload", HTTP_GET, []()
             {
-    triggerActivity();
     if (!handleFileRead("/a-upload.html"))
       server.send(404, "text/plain", "404: Not Found"); });
 
@@ -515,14 +482,4 @@ void handleWebServerClient()
 {
   // WiFi is managed by WiFiService.cpp via event handlers
   server.handleClient();
-
-  // Activity LED management
-  if (triggerActivityTime != 0)
-  {
-    if ((long)millis() - triggerActivityTime - 50 > 0)
-    {
-      digitalWrite(ACTIVITY_LED_PIN, 1);
-      triggerActivityTime = 0;
-    }
-  }
 }
