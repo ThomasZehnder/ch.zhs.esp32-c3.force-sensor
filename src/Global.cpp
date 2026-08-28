@@ -221,12 +221,12 @@ void clAssembly::processKeys()
         bool actionDelayElapsed = (millis() - stateStartMillis) >= 1000;
         if (actionDelayElapsed)
         {
-            if (state == StateTare && keys[0].pressed)
+            if (state == StateTare && !keys[0].pressed)
             {
                 Force.tare();
                 state = StateMeasure;
             }
-            else if (state == StateCalibrate && keys[1].pressed)
+            else if (state == StateCalibrate && !keys[1].pressed)
             {
                 Force.calibrate(cfg.taraCalibrateNewton); // calibrate against the configured reference force
                 state = StateMeasure;
