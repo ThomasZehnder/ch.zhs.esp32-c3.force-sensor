@@ -27,19 +27,23 @@ void setup()
     initDisplay();
     displayRender("FORCE SENSOR", Assembly.deviceId, "DeviceId", "...");
 
+    Serial.println("[DEBUG] hwSetup()...");
+    hwSetup(); // configures the button pins - needed before the hold-check below
+
     Serial.println("[DEBUG] tftDisplaySetup()...");
     tftDisplaySetup();
     tftDisplayTest(Assembly.compileDate.c_str());
-    delay(1000); // hold the test screen for 1s so it's visible before normal operation starts
+    delay(1000); // minimum time the startup screen stays visible
+    while (digitalRead(KEY1_PIN) == LOW || digitalRead(KEY2_PIN) == LOW)
+    {
+        delay(50); // keep showing the startup screen while a button is held
+    }
 
     Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();
 
     Serial.println("[DEBUG] setupWebServer()...");
     setupWebServer();
-
-    Serial.println("[DEBUG] hwSetup()...");
-    hwSetup();
 
     Serial.println("[DEBUG] Force.setup()...");
     Force.setup();
