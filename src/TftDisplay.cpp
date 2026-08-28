@@ -37,7 +37,9 @@ void tftDisplayShowForce(float forceNewton)
     tft.setTextColor(GC9A01A_WHITE);
     tft.setTextSize(4);
 
-    String text = String(forceNewton, 1) + " N";
+    char text[16];
+    snprintf(text, sizeof(text), "%.1f N", forceNewton);
+
     int16_t x1, y1;
     uint16_t textWidth, textHeight;
     tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
