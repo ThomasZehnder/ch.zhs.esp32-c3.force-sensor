@@ -29,8 +29,19 @@ namespace
         tft.print(text);
     }
 
+    // right-aligned so the text ends exactly at x=right
+    void drawRightAligned(const char *text, int16_t right, int16_t y)
+    {
+        int16_t x1, y1;
+        uint16_t textWidth, textHeight;
+        tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
+        tft.setCursor(right - textWidth, y);
+        tft.print(text);
+    }
+
     // draws values as a connected line, autoscaled to its own min/max - same idea as
     // drawForceChart() in data/index.html. x/y/w/h must stay inside the round bezel.
+    // min/max are additionally labelled, small and right-aligned to the chart's right edge.
     void drawChart(const float *values, int count, int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
     {
         if (count < 2)
@@ -62,6 +73,15 @@ namespace
             prevX = px;
             prevY = py;
         }
+
+        tft.setTextColor(GC9A01A_WHITE);
+        tft.setTextSize(1);
+        char maxLabel[12];
+        char minLabel[12];
+        snprintf(maxLabel, sizeof(maxLabel), "%.1fN", maxV);
+        snprintf(minLabel, sizeof(minLabel), "%.1fN", minV);
+        drawRightAligned(maxLabel, x + w, y);          // upper limit, top-right of the chart
+        drawRightAligned(minLabel, x + w, y + h - 8);  // lower limit, bottom-right (8px ~ size-1 text height)
     }
 }
 
