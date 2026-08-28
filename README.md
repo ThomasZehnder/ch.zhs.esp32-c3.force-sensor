@@ -110,8 +110,8 @@ stateDiagram-v2
     
     StateSetup --> StateMeasure: 1 second elapsed
     
-    StateMeasure --> StateTare: GPIO1 pressed
-    StateMeasure --> StateCalibrate: GPIO2 pressed
+    StateMeasure --> StateTare: Key1 pressed
+    StateMeasure --> StateCalibrate: Key2 pressed
     StateMeasure --> StateReboot: /reboot endpoint called
     
     StateTare --> StateMeasure: 1s elapsed + button released
