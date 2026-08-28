@@ -8,6 +8,10 @@
 #define TFT_RST  10
 #define TFT_SCLK 4
 #define TFT_MOSI 7
+// Display is write-only (no MISO wired), but the ESP32-C3 core has no compiled-in
+// default SPI pins and crashes if -1 is passed for MISO - GPIO20 is unused (native
+// USB CDC serial is active, so the UART0 RX/TX pins are free) and just parked here.
+#define TFT_MISO 20
 // BLK (backlight) is hardwired to 3V3, no GPIO needed
 
 #define KEY1_PIN       0   // Button 1 - Tare

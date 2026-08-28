@@ -15,11 +15,23 @@ namespace
     Adafruit_GC9A01A tft(&tftSpi, TFT_DC, TFT_CS, TFT_RST);
 
     float lastShownForce = NAN;
+
+    void drawCentered(const char *text)
+    {
+        int16_t x1, y1;
+        uint16_t textWidth, textHeight;
+        tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
+
+        int16_t x = (DISPLAY_SIZE - textWidth) / 2 - x1;
+        int16_t y = (DISPLAY_SIZE - textHeight) / 2 - y1;
+        tft.setCursor(x, y);
+        tft.print(text);
+    }
 }
 
 void tftDisplaySetup()
 {
-    tftSpi.begin(TFT_SCLK, -1, TFT_MOSI, TFT_CS);
+    tftSpi.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, TFT_CS);
     tft.begin();
     tft.setRotation(0);
     tft.fillScreen(GC9A01A_BLACK);
@@ -39,13 +51,13 @@ void tftDisplayShowForce(float forceNewton)
 
     char text[16];
     snprintf(text, sizeof(text), "%.1f N", forceNewton);
+    drawCentered(text);
+}
 
-    int16_t x1, y1;
-    uint16_t textWidth, textHeight;
-    tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
-
-    int16_t x = (DISPLAY_SIZE - textWidth) / 2 - x1;
-    int16_t y = (DISPLAY_SIZE - textHeight) / 2 - y1;
-    tft.setCursor(x, y);
-    tft.print(text);
+void tftDisplayTest()
+{
+    tft.fillScreen(GC9A01A_RED);
+    tft.setTextColor(GC9A01A_WHITE);
+    tft.setTextSize(3);
+    drawCentered("TFT TEST");
 }

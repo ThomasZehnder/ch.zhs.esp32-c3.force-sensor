@@ -29,6 +29,8 @@ void setup()
 
     Serial.println("[DEBUG] tftDisplaySetup()...");
     tftDisplaySetup();
+    tftDisplayTest();
+    delay(1000); // hold the test screen for 1s so it's visible before normal operation starts
 
     Serial.println("[DEBUG] wifiSetup()...");
     wifiSetup();
