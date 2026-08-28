@@ -27,7 +27,7 @@ Wireless force measurement system with WiFi connectivity, web interface, and rea
 
 Pin configuration in [src/HwInterface.h](src/HwInterface.h):
 
-- ESP32-C3 GPIO4 → HX711 DT (Data)
+- ESP32-C3 GPIO8 → HX711 DT (Data) — shares the pin with the onboard blue LED, harmless
 - ESP32-C3 GPIO9 → HX711 SCK (Clock)
 - ESP32-C3 GND → HX711 GND
 - ESP32-C3 3.3V → HX711 VCC
@@ -60,18 +60,28 @@ I2C interface configuration (hardwired — **NOT changeable**):
 
 ### Buttons
 
-- GPIO1: Tare Button (measure zero point)
-- GPIO2: Calibrate Button (calibrate against known weight)
+- GPIO0: Tare Button (measure zero point)
+- GPIO1: Calibrate Button (calibrate against known force)
 
 **Notes:**
 - Buttons are active-LOW with internal pull-ups
 - Press and hold for 1 second to trigger action
 - Button must be released after 1 second for action to fire
-- GPIO0 NOT used (reserved for boot mode detection)
 
-### LED
+### Round GC9A01A TFT Display (SPI)
 
-- GPIO8: Onboard LED (HTTP activity indicator)
+Pin configuration in [src/HwInterface.h](src/HwInterface.h) — not yet wired up in `src/display.cpp`:
+
+- ESP32-C3 GPIO3 → TFT CS (Chip Select)
+- ESP32-C3 GPIO2 → TFT DC (Data/Command)
+- ESP32-C3 GPIO10 → TFT RES (Reset)
+- ESP32-C3 GPIO4 → TFT SCL (SPI Clock)
+- ESP32-C3 GPIO7 → TFT SDA (SPI MOSI)
+- ESP32-C3 3.3V → TFT BLK (Backlight) — wired directly to power, no GPIO needed
+
+### Onboard LED
+
+- GPIO8: no longer usable as a controllable LED — repurposed as the HX711 DOUT pin above
 
 ## Software Architecture
 
