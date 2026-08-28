@@ -105,7 +105,9 @@ void tftDisplayShowForce(float forceNewton, const float *history, int historyCou
     constexpr int16_t CHART_X = 30;
     constexpr int16_t CHART_Y = 95;
     constexpr int16_t CHART_W = 180;
-    constexpr int16_t CHART_H = 85;
+    constexpr int16_t CHART_H = 75;
+    // must match FORCE_SAMPLE_INTERVAL (200ms) in HwInterface.cpp - only used for the x-axis label
+    constexpr float SAMPLE_INTERVAL_SEC = 0.2f;
 
     tft.fillScreen(GC9A01A_BLACK);
 
@@ -116,6 +118,17 @@ void tftDisplayShowForce(float forceNewton, const float *history, int historyCou
     drawCenteredAt(text, 55);
 
     drawChart(history, historyCount, CHART_X, CHART_Y, CHART_W, CHART_H, GC9A01A_CYAN);
+
+    // x-axis: how far back in time the left edge of the chart reaches, "now" at the right edge
+    float durationSec = historyCount > 1 ? (historyCount - 1) * SAMPLE_INTERVAL_SEC : 0.0f;
+    tft.setTextColor(GC9A01A_WHITE);
+    tft.setTextSize(1);
+    char startLabel[8];
+    snprintf(startLabel, sizeof(startLabel), "-%.0fs", durationSec);
+    int16_t axisLabelY = CHART_Y + CHART_H + 4;
+    tft.setCursor(CHART_X, axisLabelY);
+    tft.print(startLabel);
+    drawRightAligned("0s", CHART_X + CHART_W, axisLabelY);
 }
 
 void tftDisplayTest(const char *versionInfo)
