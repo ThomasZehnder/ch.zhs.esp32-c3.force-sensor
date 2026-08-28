@@ -15,9 +15,57 @@ namespace
     Adafruit_GC9A01A tft(&tftSpi, TFT_DC, TFT_CS, TFT_RST);
 
     float lastShownForce = NAN;
+    bool firstForceDraw = true;
+
+    // remembers the last drawn bounding box of one text element across calls, so that a
+    // redraw can erase exactly the *previous* box before drawing the new (possibly smaller)
+    // one - a same-size self-clear would otherwise leave stray pixels when text shrinks,
+    // e.g. "-12.3 N" -> "9.8 N" no longer covers the old left/right edges
+    struct TextSlot
+    {
+        int16_t x = 0, y = 0;
+        uint16_t w = 0, h = 0;
+        bool valid = false;
+    };
+
+    TextSlot forceTitleSlot;
+    TextSlot startLabelSlot;
+    TextSlot ipTextSlot;
+
+    void clearTextBounds(int16_t x1, int16_t y1, uint16_t w, uint16_t h, uint16_t bg)
+    {
+        tft.fillRect(x1 - 1, y1 - 1, w + 2, h + 2, bg);
+    }
+
+    // erases slot's previous box (if any) and stores the new one - pass slot=nullptr for
+    // elements whose full redraw area is already guaranteed clear some other way (e.g.
+    // inside a rect that just got fillRect'd, or a string that never changes length)
+    void drawAt(const char *text, int16_t x, int16_t y, int16_t x1, int16_t y1, uint16_t w, uint16_t h,
+                uint16_t bg, TextSlot *slot)
+    {
+        if (slot)
+        {
+            if (slot->valid)
+            {
+                clearTextBounds(slot->x, slot->y, slot->w, slot->h, bg);
+            }
+            slot->x = x1;
+            slot->y = y1;
+            slot->w = w;
+            slot->h = h;
+            slot->valid = true;
+        }
+        else
+        {
+            clearTextBounds(x1, y1, w, h, bg);
+        }
+
+        tft.setCursor(x, y);
+        tft.print(text);
+    }
 
     // horizontally centered on the full display width, vertically centered on centerY
-    void drawCenteredAt(const char *text, int16_t centerY)
+    void drawCenteredAt(const char *text, int16_t centerY, uint16_t bg = GC9A01A_BLACK, TextSlot *slot = nullptr)
     {
         int16_t x1, y1;
         uint16_t textWidth, textHeight;
@@ -25,18 +73,26 @@ namespace
 
         int16_t x = (DISPLAY_SIZE - textWidth) / 2 - x1;
         int16_t y = centerY - textHeight / 2 - y1;
-        tft.setCursor(x, y);
-        tft.print(text);
+        drawAt(text, x, y, x + x1, y + y1, textWidth, textHeight, bg, slot);
     }
 
     // right-aligned so the text ends exactly at x=right
-    void drawRightAligned(const char *text, int16_t right, int16_t y)
+    void drawRightAligned(const char *text, int16_t right, int16_t y, uint16_t bg = GC9A01A_BLACK, TextSlot *slot = nullptr)
     {
         int16_t x1, y1;
         uint16_t textWidth, textHeight;
         tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
-        tft.setCursor(right - textWidth, y);
-        tft.print(text);
+        int16_t x = right - textWidth;
+        drawAt(text, x, y, x + x1, y + y1, textWidth, textHeight, bg, slot);
+    }
+
+    // plain left-aligned text at (x,y), same auto-clear behaviour as the helpers above
+    void drawLeftAt(const char *text, int16_t x, int16_t y, uint16_t bg = GC9A01A_BLACK, TextSlot *slot = nullptr)
+    {
+        int16_t x1, y1;
+        uint16_t textWidth, textHeight;
+        tft.getTextBounds(text, x, y, &x1, &y1, &textWidth, &textHeight);
+        drawAt(text, x, y, x1, y1, textWidth, textHeight, bg, slot);
     }
 
     // draws values as a connected line, autoscaled to its own min/max - same idea as
@@ -95,11 +151,15 @@ void tftDisplaySetup()
 
 void tftDisplayShowForce(float forceNewton, const float *history, int historyCount, const char *ipText)
 {
-    if (forceNewton == lastShownForce)
+    // round to the displayed precision (0.1N) - sensor noise on the raw float would otherwise
+    // trigger a full redraw (and its black flash) on almost every 200ms tick even when nothing
+    // visibly changes
+    float roundedForce = roundf(forceNewton * 10.0f) / 10.0f;
+    if (roundedForce == lastShownForce)
     {
-        return; // unchanged since last draw, skip flicker
+        return;
     }
-    lastShownForce = forceNewton;
+    lastShownForce = roundedForce;
 
     // chart rectangle must stay inside the round bezel - all 4 corners within radius ~115
     constexpr int16_t CHART_X = 30;
@@ -109,14 +169,24 @@ void tftDisplayShowForce(float forceNewton, const float *history, int historyCou
     // must match FORCE_SAMPLE_INTERVAL (200ms) in HwInterface.cpp - only used for the x-axis label
     constexpr float SAMPLE_INTERVAL_SEC = 0.2f;
 
-    tft.fillScreen(GC9A01A_BLACK);
+    // one full clear on the first frame, to wipe any leftover startup-screen content (its
+    // layout differs from this screen's, so the per-element clears below wouldn't reach it) -
+    // every frame after that only clears its own bounding boxes, avoiding the black flash
+    if (firstForceDraw)
+    {
+        tft.fillScreen(GC9A01A_BLACK);
+        firstForceDraw = false;
+    }
 
     tft.setTextColor(GC9A01A_WHITE);
     tft.setTextSize(4);
     char text[16];
     snprintf(text, sizeof(text), "%.1f N", forceNewton);
-    drawCenteredAt(text, 55);
+    drawCenteredAt(text, 55, GC9A01A_BLACK, &forceTitleSlot);
 
+    // +1 on both dimensions: sampleY()/px can reach exactly y+h / x+w, one row/column past
+    // what a plain w x h fillRect would cover, otherwise leaving stray pixels behind there
+    tft.fillRect(CHART_X, CHART_Y, CHART_W + 1, CHART_H + 1, GC9A01A_BLACK);
     drawChart(history, historyCount, CHART_X, CHART_Y, CHART_W, CHART_H, GC9A01A_CYAN);
 
     // x-axis: how far back in time the left edge of the chart reaches, "now" at the right edge
@@ -126,13 +196,12 @@ void tftDisplayShowForce(float forceNewton, const float *history, int historyCou
     char startLabel[8];
     snprintf(startLabel, sizeof(startLabel), "-%.0fs", durationSec);
     int16_t axisLabelY = CHART_Y + CHART_H + 4;
-    tft.setCursor(CHART_X, axisLabelY);
-    tft.print(startLabel);
-    drawRightAligned("0s", CHART_X + CHART_W, axisLabelY);
+    drawLeftAt(startLabel, CHART_X, axisLabelY, GC9A01A_BLACK, &startLabelSlot);
+    drawRightAligned("0s", CHART_X + CHART_W, axisLabelY); // constant text, no shrink possible - no slot needed
 
     // IP address, small, at the very bottom - same info as the "#Force" line on the OLED
     tft.setTextSize(1);
-    drawCenteredAt(ipText, 218);
+    drawCenteredAt(ipText, 218, GC9A01A_BLACK, &ipTextSlot);
 }
 
 void tftDisplayTest(const char *versionInfo)
