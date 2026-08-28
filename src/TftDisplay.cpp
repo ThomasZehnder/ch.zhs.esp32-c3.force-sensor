@@ -307,6 +307,23 @@ void tftDisplayShowForce(float forceNewton, const float *history, int historyCou
     drawCenteredAt(ipText, 218, GC9A01A_BLACK, &ipTextSlot);
 }
 
+void tftDisplayMessage(const char *line1, const char *line2)
+{
+    tft.fillScreen(GC9A01A_BLACK);
+
+    uint16_t color = (currentTheme == TftTheme::Old) ? OLD_THEME_LIT : GC9A01A_WHITE;
+    tft.setTextColor(color);
+    tft.setTextSize(3);
+    drawCenteredAt(line1, 95);
+
+    tft.setTextSize(2);
+    drawCenteredAt(line2, 140);
+
+    // the message screen's layout differs from the force view's - force the next
+    // tftDisplayShowForce() call to fully clear the screen instead of just its own regions
+    firstForceDraw = true;
+}
+
 void tftDisplayTest(const char *versionInfo)
 {
     tft.fillScreen(GC9A01A_BLACK);

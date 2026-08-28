@@ -9,6 +9,7 @@
 #include "credentials.h"
 #include "Force.h"
 #include "display.h"
+#include "TftDisplay.h"
 
 // global object definition
 clAssembly Assembly;
@@ -210,6 +211,7 @@ void clAssembly::processKeys()
             // Key 0 --> show "tare now" for 1s, actual tare fires in main loop after it elapses
             state = StateTare;
             displayRenderQueued("TARA 0", "Apply ", "no force", "", 1000);
+            tftDisplayMessage("TARA", "Apply no force");
             stateStartMillis = millis();
         }
         else if (keys[1].edge)
@@ -217,6 +219,9 @@ void clAssembly::processKeys()
             // Key 1 --> show reference force for 1s, actual calibration fires in main loop after it elapses
             state = StateCalibrate;
             displayRenderQueued("SCALE", "ApplyForce:", String(cfg.taraCalibrateNewton).c_str(), "", 1000);
+            char tftLine2[24];
+            snprintf(tftLine2, sizeof(tftLine2), "Apply %.1fN", cfg.taraCalibrateNewton);
+            tftDisplayMessage("SCALE", tftLine2);
             stateStartMillis = millis();
         }
 

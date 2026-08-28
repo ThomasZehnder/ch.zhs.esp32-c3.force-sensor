@@ -9,6 +9,9 @@ void tftDisplaySetup(const char *theme);
 // same array shape as Assembly.force.history / the web UI's forceHistory chart); ipText is
 // shown small at the bottom, same as the "#Force" line on the OLED (display.h/.cpp)
 void tftDisplayShowForce(float forceNewton, const float *history, int historyCount, const char *ipText);
+// shows a simple full-screen two-line message (e.g. Tare/Calibrate prompts), replacing the
+// force view until the next tftDisplayShowForce() call, which fully redraws over it
+void tftDisplayMessage(const char *line1, const char *line2);
 // fills the screen with a startup banner (title + version/build info) - call once after
 // tftDisplaySetup() to verify wiring
 void tftDisplayTest(const char *versionInfo);
