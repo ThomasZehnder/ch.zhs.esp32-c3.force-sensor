@@ -93,7 +93,7 @@ void tftDisplaySetup()
     tft.fillScreen(GC9A01A_BLACK);
 }
 
-void tftDisplayShowForce(float forceNewton, const float *history, int historyCount)
+void tftDisplayShowForce(float forceNewton, const float *history, int historyCount, const char *ipText)
 {
     if (forceNewton == lastShownForce)
     {
@@ -129,6 +129,10 @@ void tftDisplayShowForce(float forceNewton, const float *history, int historyCou
     tft.setCursor(CHART_X, axisLabelY);
     tft.print(startLabel);
     drawRightAligned("0s", CHART_X + CHART_W, axisLabelY);
+
+    // IP address, small, at the very bottom - same info as the "#Force" line on the OLED
+    tft.setTextSize(1);
+    drawCenteredAt(ipText, 218);
 }
 
 void tftDisplayTest(const char *versionInfo)

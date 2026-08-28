@@ -75,6 +75,10 @@ void loop()
         Force.loop();
         if (Assembly.state == StateMeasure)
         {
+            String ipText = Assembly.wifiConnected ? Assembly.localIp
+                            : (Assembly.apIp != "") ? Assembly.apIp
+                                                     : "not WIFI...";
+
             // unwrap the circular history buffer into chronological (oldest to newest) order
             float orderedHistory[FORCE_HISTORY_SIZE];
             int historyCount = Assembly.force.historyFull ? FORCE_HISTORY_SIZE : Assembly.force.historyIndex;
@@ -83,22 +87,14 @@ void loop()
             {
                 orderedHistory[i] = Assembly.force.history[(historyStart + i) % FORCE_HISTORY_SIZE];
             }
-            tftDisplayShowForce(Assembly.force.value, orderedHistory, historyCount);
+            tftDisplayShowForce(Assembly.force.value, orderedHistory, historyCount, ipText.c_str());
+
+            if (isDisplayQueueEmpty())
+            {
+                String sForce = String(Assembly.force.value, 1) + "N";
+                displayRenderQueued("#Force", sForce.c_str(), "", ipText, 10);
+            }
         }
-        if ((Assembly.state == StateMeasure) && isDisplayQueueEmpty()) {
-            String sForce = String(Assembly.force.value, 1) + "N";
-            if (Assembly.wifiConnected)
-            {
-                displayRenderQueued("#Force", sForce.c_str(), "", Assembly.localIp, 10);
-            }
-            else if  (Assembly.apIp != "")
-            {
-                displayRenderQueued("#Force", sForce.c_str(), "", Assembly.apIp, 10);
-            } else {
-                displayRenderQueued("#Force", sForce.c_str(), "", "not WIFI...", 10);
-                
-            }
-    }
     }
 
     // 50ms tick
