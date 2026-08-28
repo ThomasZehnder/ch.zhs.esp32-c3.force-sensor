@@ -21,6 +21,7 @@ struct tstCfg
     long offset = 0;           // HX711 raw offset, persisted via config_main.json, OFFSET
     float taraCalibrateNewton = 9.81; // reference force used for calibration, configurable via config_main.json, TARA_CALIBRATE_NEWTON
     byte index = 0; // index depends on found WIFI Network
+    char theme[16] = "default"; // TFT display theme: "default" or "old", configurable via config_main.json, THEME
 };
 
 #define NBRKEYS 2

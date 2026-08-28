@@ -58,10 +58,12 @@ void clAssembly::setupDevice()
         cfg.scale = doc["SCALE"] | 1.0f;
         cfg.offset = doc["OFFSET"] | 0L;
         cfg.taraCalibrateNewton = doc["TARA_CALIBRATE_NEWTON"] | 40.0f;
+        strncpy(cfg.theme, doc["THEME"] | "default", sizeof(cfg.theme));
 
         Serial.println(String("Assembly.setupDevice --> deviceid: ") + deviceId);
         Serial.println(String("Assembly.setupDevice --> scale: ") + cfg.scale + " offset: " + cfg.offset);
         Serial.println(String("Assembly.setupDevice --> taraCalibrateNewton: ") + cfg.taraCalibrateNewton);
+        Serial.println(String("Assembly.setupDevice --> theme: ") + cfg.theme);
         file.close(); // Close the file again
     }
     else
@@ -71,6 +73,7 @@ void clAssembly::setupDevice()
         cfg.scale = 1.0f;
         cfg.offset = 0L;
         cfg.taraCalibrateNewton = 9.81f;
+        strcpy(cfg.theme, "default");
     }
 }
 
@@ -84,6 +87,7 @@ void clAssembly::saveConfig()
     doc["SCALE"] = cfg.scale;
     doc["OFFSET"] = cfg.offset;
     doc["TARA_CALIBRATE_NEWTON"] = cfg.taraCalibrateNewton;
+    doc["THEME"] = cfg.theme;
 
     File file = LittleFS.open(filename, "w");
     if (file)

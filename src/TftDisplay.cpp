@@ -4,6 +4,7 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_GC9A01A.h>
+#include <strings.h> // strcasecmp
 
 #include "HwInterface.h"
 
@@ -13,6 +14,13 @@ namespace
 
     SPIClass tftSpi(FSPI);
     Adafruit_GC9A01A tft(&tftSpi, TFT_DC, TFT_CS, TFT_RST);
+
+    enum class TftTheme
+    {
+        Default, // plain proportional-font text, cyan chart
+        Old      // red 7-segment digit bank, red/amber chart+labels, retro meter look
+    };
+    TftTheme currentTheme = TftTheme::Default;
 
     float lastShownForce = NAN;
     bool firstForceDraw = true;
@@ -95,10 +103,92 @@ namespace
         drawAt(text, x, y, x1, y1, textWidth, textHeight, bg, slot);
     }
 
+    // --- "old" theme: retro 7-segment meter look -------------------------------------
+    constexpr uint16_t OLD_THEME_LIT = GC9A01A_RED;      // lit segment
+    constexpr uint16_t OLD_THEME_GHOST = 0x3000;         // dim red - always-visible "unlit" segment, like a real LED 7-seg
+    constexpr uint16_t OLD_THEME_LABEL = GC9A01A_ORANGE; // small text (min/max, axis, IP)
+
+    // bit0=A(top) 1=B(top-right) 2=C(bottom-right) 3=D(bottom) 4=E(bottom-left) 5=F(top-left) 6=G(middle)
+    constexpr uint8_t SEVEN_SEG_DIGITS[10] = {
+        0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};
+
+    // draws one 7-seg digit at top-left (x,y), cell size (w,h), segment thickness t. Every
+    // segment is always drawn, either in litColor or ghostColor - since the cell's shape never
+    // changes, this is inherently flicker-safe (no separate erase-old-frame step needed).
+    // digit<0 draws an all-ghost cell (used to blank insignificant leading digits).
+    void draw7SegDigit(int16_t x, int16_t y, int16_t w, int16_t h, int16_t t, int digit)
+    {
+        uint8_t mask = (digit >= 0 && digit <= 9) ? SEVEN_SEG_DIGITS[digit] : 0x00;
+        auto seg = [&](uint8_t bit, int16_t sx, int16_t sy, int16_t sw, int16_t sh)
+        {
+            tft.fillRect(sx, sy, sw, sh, (mask & bit) ? OLD_THEME_LIT : OLD_THEME_GHOST);
+        };
+
+        int16_t half = h / 2;
+        seg(0x01, x + t, y, w - 2 * t, t);                  // A top
+        seg(0x02, x + w - t, y + t, t, half - t);           // B top-right
+        seg(0x04, x + w - t, y + half, t, half - t);        // C bottom-right
+        seg(0x08, x + t, y + h - t, w - 2 * t, t);          // D bottom
+        seg(0x10, x, y + half, t, half - t);                // E bottom-left
+        seg(0x20, x, y + t, t, half - t);                   // F top-left
+        seg(0x40, x + t, y + half - t / 2, w - 2 * t, t);   // G middle
+    }
+
+    // fixed-position digit bank: [sign] HHH . T  N  - hundreds/tens are blanked (ghost-only)
+    // when insignificant, exactly like an old multimeter's leading-zero suppression
+    void drawForceValueOld(float value)
+    {
+        constexpr int16_t DIGIT_W = 22, DIGIT_H = 40, DIGIT_T = 4, GAP = 6;
+        constexpr int16_t BANK_Y = 35;
+        constexpr int16_t BANK_X = 55; // centers the 4-digit + dp + "N" bank on a 240px wide screen
+
+        bool negative = value < 0;
+        float absVal = fabsf(value);
+        if (absVal > 999.9f)
+        {
+            absVal = 999.9f;
+        }
+        int tenthsTotal = (int)roundf(absVal * 10.0f);
+        int intPart = tenthsTotal / 10;
+        int tenths = tenthsTotal % 10;
+        int hundreds = intPart / 100;
+        int tens = (intPart / 10) % 10;
+        int ones = intPart % 10;
+        bool blankHundreds = hundreds == 0;
+        bool blankTens = blankHundreds && tens == 0;
+
+        // sign indicator: a single flat bar, ghost when unused - always redrawn so it never
+        // needs a separate clear step either
+        tft.fillRect(BANK_X - 16, BANK_Y + DIGIT_H / 2 - DIGIT_T / 2, 12, DIGIT_T,
+                     negative ? OLD_THEME_LIT : OLD_THEME_GHOST);
+
+        int16_t x = BANK_X;
+        draw7SegDigit(x, BANK_Y, DIGIT_W, DIGIT_H, DIGIT_T, blankHundreds ? -1 : hundreds);
+        x += DIGIT_W + GAP;
+        draw7SegDigit(x, BANK_Y, DIGIT_W, DIGIT_H, DIGIT_T, blankTens ? -1 : tens);
+        x += DIGIT_W + GAP;
+        draw7SegDigit(x, BANK_Y, DIGIT_W, DIGIT_H, DIGIT_T, ones);
+        x += DIGIT_W + GAP;
+
+        constexpr int16_t DP_SIZE = 6;
+        tft.fillRect(x, BANK_Y + DIGIT_H - DP_SIZE, DP_SIZE, DP_SIZE, OLD_THEME_LIT);
+        x += DP_SIZE + GAP;
+
+        draw7SegDigit(x, BANK_Y, DIGIT_W, DIGIT_H, DIGIT_T, tenths);
+        x += DIGIT_W + GAP + 6;
+
+        tft.setTextColor(OLD_THEME_LIT);
+        tft.setTextSize(2);
+        tft.setCursor(x, BANK_Y + DIGIT_H / 2 - 8);
+        tft.print("N"); // fixed position/content - never needs a clear, always the same glyph
+    }
+    // -----------------------------------------------------------------------------------
+
     // draws values as a connected line, autoscaled to its own min/max - same idea as
     // drawForceChart() in data/index.html. x/y/w/h must stay inside the round bezel.
     // min/max are additionally labelled, small and right-aligned to the chart's right edge.
-    void drawChart(const float *values, int count, int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
+    void drawChart(const float *values, int count, int16_t x, int16_t y, int16_t w, int16_t h,
+                   uint16_t color, uint16_t labelColor)
     {
         if (count < 2)
         {
@@ -130,7 +220,7 @@ namespace
             prevY = py;
         }
 
-        tft.setTextColor(GC9A01A_WHITE);
+        tft.setTextColor(labelColor);
         tft.setTextSize(1);
         char maxLabel[12];
         char minLabel[12];
@@ -141,8 +231,10 @@ namespace
     }
 }
 
-void tftDisplaySetup()
+void tftDisplaySetup(const char *theme)
 {
+    currentTheme = (theme && strcasecmp(theme, "old") == 0) ? TftTheme::Old : TftTheme::Default;
+
     tftSpi.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, TFT_CS);
     tft.begin();
     tft.setRotation(2); //2 rotate 180 deg
@@ -178,20 +270,31 @@ void tftDisplayShowForce(float forceNewton, const float *history, int historyCou
         firstForceDraw = false;
     }
 
-    tft.setTextColor(GC9A01A_WHITE);
-    tft.setTextSize(4);
-    char text[16];
-    snprintf(text, sizeof(text), "%.1f N", forceNewton);
-    drawCenteredAt(text, 55, GC9A01A_BLACK, &forceTitleSlot);
+    bool isOld = currentTheme == TftTheme::Old;
+    uint16_t chartColor = isOld ? OLD_THEME_LIT : GC9A01A_CYAN;
+    uint16_t labelColor = isOld ? OLD_THEME_LABEL : GC9A01A_WHITE;
+
+    if (isOld)
+    {
+        drawForceValueOld(forceNewton);
+    }
+    else
+    {
+        tft.setTextColor(GC9A01A_WHITE);
+        tft.setTextSize(4);
+        char text[16];
+        snprintf(text, sizeof(text), "%.1f N", forceNewton);
+        drawCenteredAt(text, 55, GC9A01A_BLACK, &forceTitleSlot);
+    }
 
     // +1 on both dimensions: sampleY()/px can reach exactly y+h / x+w, one row/column past
     // what a plain w x h fillRect would cover, otherwise leaving stray pixels behind there
     tft.fillRect(CHART_X, CHART_Y, CHART_W + 1, CHART_H + 1, GC9A01A_BLACK);
-    drawChart(history, historyCount, CHART_X, CHART_Y, CHART_W, CHART_H, GC9A01A_CYAN);
+    drawChart(history, historyCount, CHART_X, CHART_Y, CHART_W, CHART_H, chartColor, labelColor);
 
     // x-axis: how far back in time the left edge of the chart reaches, "now" at the right edge
     float durationSec = historyCount > 1 ? (historyCount - 1) * SAMPLE_INTERVAL_SEC : 0.0f;
-    tft.setTextColor(GC9A01A_WHITE);
+    tft.setTextColor(labelColor);
     tft.setTextSize(1);
     char startLabel[8];
     snprintf(startLabel, sizeof(startLabel), "-%.0fs", durationSec);

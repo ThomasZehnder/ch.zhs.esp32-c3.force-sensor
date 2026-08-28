@@ -2,5 +2,6 @@
     "DEVICEID": "f_sensor_",
     "SCALE": 1.0,
     "OFFSET": 0.0,
-    "TARA_CALIBRATE_NEWTON": 40
+    "TARA_CALIBRATE_NEWTON": 40,
+    "THEME": "default"
 }
