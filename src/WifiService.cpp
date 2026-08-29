@@ -3,7 +3,7 @@
 #include "credentials.h"
 
 #include "Global.h"
-#include "display.h"
+#include "OledDisplay.h"
 
 void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 {

@@ -8,7 +8,7 @@
 #include <WiFiService.h>
 #include "credentials.h"
 #include "Force.h"
-#include "display.h"
+#include "OledDisplay.h"
 #include "TftDisplay.h"
 
 // global object definition

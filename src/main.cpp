@@ -7,8 +7,6 @@
 
 #include <WiFiService.h>
 
-
-
 #include "Global.h"
 #include "OledDisplay.h"
 #include "TftDisplay.h"

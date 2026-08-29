@@ -8,7 +8,7 @@
 #include <time.h>
 
 #include "Global.h"
-#include "display.h"
+#include "OledDisplay.h"
 #include "HwInterface.h"
 
 namespace
