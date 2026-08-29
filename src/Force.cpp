@@ -18,7 +18,22 @@ void clForce::loop()
 {
     if (Assembly.force.sensor.is_ready())
     {
-        Assembly.force.value = Assembly.force.sensor.get_units(1);
+        float newValue = Assembly.force.sensor.get_units(1);
+        float delta = abs(newValue - Assembly.force.value);
+
+        // Filter outliers: reject values with delta > 40N, keep last valid value
+        if (delta > 40.0)
+        {
+            Serial.print("[FORCE] Outlier detected: ");
+            Serial.print(newValue);
+            Serial.print(" N (Delta: ");
+            Serial.print(delta);
+            Serial.println(" N) - rejected, keeping last value");
+        }
+        else
+        {
+            Assembly.force.value = newValue;
+        }
 
         Assembly.force.history[Assembly.force.historyIndex] = Assembly.force.value;
         Assembly.force.historyIndex = (Assembly.force.historyIndex + 1) % FORCE_HISTORY_SIZE;
