@@ -30,9 +30,9 @@ void setup()
     Serial.println("[DEBUG] hwSetup()...");
     hwSetup(); // configures the button pins - needed before the hold-check below
 
-    Serial.println("[DEBUG] tftDisplaySetup()...");
-    tftDisplaySetup(Assembly.cfg.theme);
-    tftDisplayTest(Assembly.compileDate.c_str());
+    Serial.println("[DEBUG] TftDisplay.setup()...");
+    TftDisplay.setup(Assembly.cfg.theme);
+    TftDisplay.splash(Assembly.compileDate.c_str());
     delay(1000); // minimum time the startup screen stays visible
     while (digitalRead(KEY1_PIN) == LOW || digitalRead(KEY2_PIN) == LOW)
     {
@@ -87,7 +87,7 @@ void loop()
             {
                 orderedHistory[i] = Assembly.force.history[(historyStart + i) % FORCE_HISTORY_SIZE];
             }
-            tftDisplayShowForce(Assembly.force.value, orderedHistory, historyCount, ipText.c_str());
+            TftDisplay.showForce(Assembly.force.value, orderedHistory, historyCount, ipText.c_str());
 
             if (isDisplayQueueEmpty())
             {
