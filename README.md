@@ -83,7 +83,25 @@ Pin configuration in [src/HwInterface.h](src/HwInterface.h) — not yet wired up
 
 - GPIO8: no longer usable as a controllable LED — repurposed as the HX711 DOUT pin above
 
-## Software Architecture
+## Libraries and Dependencies
+
+This project uses several libraries, most of which are managed via PlatformIO's `lib_deps`.
+
+### External Libraries (via PlatformIO Registry)
+- **U8g2**: Graphics library for the OLED display.
+- **ArduinoJson**: JSON serialization and deserialization.
+- **Adafruit GC9A01A**: Driver for the round TFT display.
+- **Adafruit GFX / BusIO**: Support libraries for Adafruit displays.
+
+### Local Libraries
+- **HX711**: The library for the force sensor is included **locally** in the `lib/HX711` folder.
+
+**Why is HX711 local?**
+The HX711 library was moved to a local folder instead of using the PlatformIO dependency manager for several reasons:
+1. **Custom Modifications**: To ensure specific timing or bug fixes (especially for the ESP32-C3 architecture) are preserved without being overwritten by library updates.
+2. **Version Pinning**: To avoid breaking changes from upstream updates and ensure the project remains buildable even if the original repository changes or disappears.
+3. **Architecture Compatibility**: Some versions of the HX711 library in the registry have issues with the RISC-V based ESP32-C3; the local version is verified to work with this specific hardware.
+
 
 ### Main Components
 
