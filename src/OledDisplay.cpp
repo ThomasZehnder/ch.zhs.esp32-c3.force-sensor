@@ -9,8 +9,7 @@ namespace
     constexpr int SDA_PIN = 5; // I2C SDA (OLED - fix verlötet)
     constexpr int SCL_PIN = 6; // I2C SCL (OLED - fix verlötet)
     constexpr int MAX_QUEUE_SIZE = 20;
-
-    U8G2_SSD1306_72X40_ER_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+    constexpr unsigned long DISPLAY_UPDATE_INTERVAL_MS = 100;
 
     struct DisplayItem
     {
@@ -18,7 +17,12 @@ namespace
         unsigned long durationMs;
         unsigned long displayStartTime;
     };
+}
 
+class clOledDisplay
+{
+private:
+    U8G2_SSD1306_72X40_ER_F_HW_I2C oled{U8G2_R0, U8X8_PIN_NONE};
     DisplayItem displayQueue[MAX_QUEUE_SIZE];
     int queueHead = 0;
     int queueTail = 0;
@@ -26,7 +30,6 @@ namespace
     unsigned long currentItemEndTime = 0;
     bool isQueueMode = false;
     unsigned long lastDisplayUpdateTime = 0;
-    constexpr unsigned long DISPLAY_UPDATE_INTERVAL_MS = 100; // Max 10 updates per second
 
     void drawCenteredText(int y, const char *text)
     {
@@ -34,9 +37,7 @@ namespace
         int textWidth = oled.getStrWidth(text);
         int x = (width - textWidth) / 2;
         if (x < 0)
-        {
             x = 0;
-        }
         oled.drawStr(x, y, text);
     }
 
@@ -51,20 +52,15 @@ namespace
         int textWidth = oled.getStrWidth(text);
         int x = width - textWidth;
         if (x < 0)
-        {
             x = 0;
-        }
         oled.drawStr(x, y, text);
     }
 
-    // tries preferredFont first; falls back to fallbackFont if the text is too wide to fit the display
     void drawCenteredTextFit(int y, const char *text, const uint8_t *preferredFont, const uint8_t *fallbackFont)
     {
         oled.setFont(preferredFont);
         if (oled.getStrWidth(text) > oled.getDisplayWidth())
-        {
             oled.setFont(fallbackFont);
-        }
         drawCenteredText(y, text);
     }
 
@@ -95,9 +91,7 @@ namespace
     bool dequeueDisplay(DisplayItem &item)
     {
         if (queueCount == 0)
-        {
             return false;
-        }
 
         item = displayQueue[queueHead];
         queueHead = (queueHead + 1) % MAX_QUEUE_SIZE;
@@ -105,104 +99,92 @@ namespace
 
         return true;
     }
-}
 
-void initDisplay()
-{
-    Wire.begin(SDA_PIN, SCL_PIN);
-    oled.begin();
-    oled.setFont(u8g2_font_5x8_tr);
-}
-
-void displayRender(const String &line1, const String &line2, const String &line3, const String &line4)
-{
-    //Serial.println("[OLED] displayRender() called");
-
-    // Use firstPage/nextPage instead of sendBuffer (non-blocking approach)
-    oled.firstPage();
-    do
+public:
+    void init()
     {
-        if (line1.startsWith ("#"))
-        {
-            oled.setFont(u8g2_font_5x8_tr);
-            drawLeftText(8, line1.c_str());
-            oled.setFont(u8g2_font_logisoso18_tf );
-            drawRightText(30, line2.c_str());
-            
-            oled.setFont(u8g2_font_5x8_tr);
-            drawCenteredText(31, line3.c_str());
-            drawCenteredText(39, line4.c_str());
-        }
-        else
-        {
-            oled.setFont(u8g2_font_5x8_tr);
-            drawCenteredText(8, line1.c_str());
-
-            drawCenteredTextFit(20, line2.c_str(), u8g2_font_8x13B_tf, u8g2_font_6x10_tf);
-
-            oled.setFont(u8g2_font_5x8_tr);
-            drawCenteredText(31, line3.c_str());
-            drawCenteredText(39, line4.c_str());
-        }
-    } while (oled.nextPage());
-
-    //Serial.println("[OLED] Display updated");
-}
-
-void displayRenderQueued(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)
-{
-    enqueueDisplay(line1, line2, line3, line4, durationMs);
-}
-
-bool isDisplayQueueEmpty()
-{
-    return queueCount == 0;
-}
-
-void displayUpdate()
-{
-    static unsigned long lastDebug = 0;
-
-    // Throttle OLED updates to avoid blocking the loop
-    if ((long)(millis() - lastDisplayUpdateTime) < DISPLAY_UPDATE_INTERVAL_MS)
-    {
-        return;
+        Wire.begin(SDA_PIN, SCL_PIN);
+        oled.begin();
+        oled.setFont(u8g2_font_5x8_tr);
     }
 
-    if (!isQueueMode || queueCount == 0)
+    void render(const String &line1, const String &line2, const String &line3, const String &line4)
     {
-        return;
+        oled.firstPage();
+        do
+        {
+            if (line1.startsWith("#"))
+            {
+                oled.setFont(u8g2_font_5x8_tr);
+                drawLeftText(8, line1.c_str());
+                oled.setFont(u8g2_font_logisoso18_tf);
+                drawRightText(30, line2.c_str());
+
+                oled.setFont(u8g2_font_5x8_tr);
+                drawCenteredText(31, line3.c_str());
+                drawCenteredText(39, line4.c_str());
+            }
+            else
+            {
+                oled.setFont(u8g2_font_5x8_tr);
+                drawCenteredText(8, line1.c_str());
+                drawCenteredTextFit(20, line2.c_str(), u8g2_font_8x13B_tf, u8g2_font_6x10_tf);
+                oled.setFont(u8g2_font_5x8_tr);
+                drawCenteredText(31, line3.c_str());
+                drawCenteredText(39, line4.c_str());
+            }
+        } while (oled.nextPage());
     }
 
-    // Check if current item should expire
-    long timeUntilExpire = (long)(currentItemEndTime - millis());
-    if (timeUntilExpire <= 0)
+    void renderQueued(const String &line1, const String &line2, const String &line3, const String &line4, unsigned long durationMs)
     {
-        DisplayItem item;
-        if (dequeueDisplay(item))
-        {
-            Serial.print("[DISPLAY] Dequeued item: ");
-            Serial.print(queueCount);
-            Serial.print(" - ");
-            Serial.print(item.line1);
-            Serial.print(" | ");
-            Serial.print(item.line2);
-            Serial.print(" | ");
-            Serial.print(item.line3);
-            Serial.print(" | ");
-            Serial.print(item.line4);
-            Serial.print(" # Duration: ");
-            Serial.print(item.durationMs);
-            Serial.println(" ms");
+        enqueueDisplay(line1, line2, line3, line4, durationMs);
+    }
 
-            lastDisplayUpdateTime = millis();
-            displayRender(item.line1, item.line2, item.line3, item.line4);
-            currentItemEndTime = millis() + item.durationMs;
-        }
-        else
+    void update()
+    {
+        if ((long)(millis() - lastDisplayUpdateTime) < DISPLAY_UPDATE_INTERVAL_MS)
+            return;
+
+        if (!isQueueMode || queueCount == 0)
+            return;
+
+        long timeUntilExpire = (long)(currentItemEndTime - millis());
+        if (timeUntilExpire <= 0)
         {
-            Serial.println("[DISPLAY] Queue empty, disabling queue mode");
-            isQueueMode = false;
+            DisplayItem item;
+            if (dequeueDisplay(item))
+            {
+                Serial.print("[DISPLAY] Dequeued item: ");
+                Serial.print(queueCount);
+                Serial.print(" - ");
+                Serial.print(item.line1);
+                Serial.print(" | ");
+                Serial.print(item.line2);
+                Serial.print(" | ");
+                Serial.print(item.line3);
+                Serial.print(" | ");
+                Serial.print(item.line4);
+                Serial.print(" # Duration: ");
+                Serial.print(item.durationMs);
+                Serial.println(" ms");
+
+                lastDisplayUpdateTime = millis();
+                render(item.line1, item.line2, item.line3, item.line4);
+                currentItemEndTime = millis() + item.durationMs;
+            }
+            else
+            {
+                Serial.println("[DISPLAY] Queue empty, disabling queue mode");
+                isQueueMode = false;
+            }
         }
     }
-}
+
+    bool isQueueEmpty()
+    {
+        return queueCount == 0;
+    }
+};
+
+clOledDisplay OledDisplay;

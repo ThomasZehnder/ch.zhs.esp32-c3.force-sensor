@@ -28,7 +28,7 @@ void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
       // Show WiFi info on OLED for 2 seconds via queue
       char rssiStr[16];
       snprintf(rssiStr, sizeof(rssiStr), "%d dBm", rssiValue);
-      displayRenderQueued("WiFi Connected", Assembly.localIp, Assembly.ssid, rssiStr, 5000);
+      OledDisplay.renderQueued("WiFi Connected", Assembly.localIp, Assembly.ssid, rssiStr, 5000);
 
       byte cfgIndex = 0;
       for (cfgIndex = 0; cfgIndex < (sizeof(Assembly.cfg.wifi) / sizeof(Assembly.cfg.wifi[0])); cfgIndex++)
@@ -75,14 +75,14 @@ void wifiSetup()
     Serial.println(Assembly.cfg.wifi[0].ssid);
 
     // Show on OLED immediately
-    displayRenderQueued("[WIFI] Searching", Assembly.cfg.wifi[0].ssid, "Attempt:", "(1)/1/2", 2000);
+    OledDisplay.renderQueued("[WIFI] Searching", Assembly.cfg.wifi[0].ssid, "Attempt:", "(1)/1/2", 2000);
 
     WiFi.begin(Assembly.cfg.wifi[0].ssid, Assembly.cfg.wifi[0].pw);
   }
   else
   {
     Serial.println("[WIFI] No WiFi SSID configured!");
-    displayRenderQueued("[WIFI] Error", "No SSID", "configured", "", 3000);
+    OledDisplay.renderQueued("[WIFI] Error", "No SSID", "configured", "", 3000);
     
   }
 
@@ -121,7 +121,7 @@ void wifiLoop()
       Serial.print("[WIFI] Access Point created: ");
       Serial.println(apSsid);
       Assembly.apIp = WiFi.softAPIP().toString();
-      displayRenderQueued("AP Mode Active", Assembly.apIp, apSsid,  "", 5000);
+      OledDisplay.renderQueued("AP Mode Active", Assembly.apIp, apSsid,  "", 5000);
     }
     return;
   }
@@ -152,7 +152,7 @@ void wifiLoop()
       // Show on OLED
       char attemptStr[16];
       snprintf(attemptStr, sizeof(attemptStr), "(%d)/%d/%d", currentWifiIndex +1, wifiAttemptRound + 1, MAX_WIFI_ROUNDS);
-      displayRenderQueued("[WIFI] Searching", Assembly.cfg.wifi[currentWifiIndex].ssid, "Attempt:", attemptStr, 2000);
+      OledDisplay.renderQueued("[WIFI] Searching", Assembly.cfg.wifi[currentWifiIndex].ssid, "Attempt:", attemptStr, 2000);
 
       // Try to connect
       WiFi.begin(Assembly.cfg.wifi[currentWifiIndex].ssid, Assembly.cfg.wifi[currentWifiIndex].pw);

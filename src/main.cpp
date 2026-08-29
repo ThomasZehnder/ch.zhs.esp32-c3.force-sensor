@@ -14,7 +14,7 @@
 void setup()
 {
     Serial.begin(115200);
-    displayRender("ESP32-C3 OLED", "**", "****", "****");
+    OledDisplay.render("ESP32-C3 OLED", "**", "****", "****");
     delay(300); // to enable serial out
 
     Serial.println();
@@ -23,9 +23,9 @@ void setup()
     Serial.println("[DEBUG] Assembly.setup()...");
     Assembly.setup(); // read config file
 
-    Serial.println("[DEBUG] initDisplay()...");
-    initDisplay();
-    displayRender("FORCE SENSOR", Assembly.deviceId, "DeviceId", "...");
+    Serial.println("[DEBUG] OledDisplay.init()...");
+    OledDisplay.init();
+    OledDisplay.render("FORCE SENSOR", Assembly.deviceId, "DeviceId", "...");
 
     Serial.println("[DEBUG] hwSetup()...");
     hwSetup(); // configures the button pins - needed before the hold-check below
@@ -54,7 +54,7 @@ void setup()
 void loop()
 {
     // Update display queue
-    displayUpdate();
+    OledDisplay.update();
 
     hwLoop();
 
@@ -89,10 +89,10 @@ void loop()
             }
             TftDisplay.showForce(Assembly.force.value, orderedHistory, historyCount, ipText.c_str());
 
-            if (isDisplayQueueEmpty())
+            if (OledDisplay.isQueueEmpty())
             {
                 String sForce = String(Assembly.force.value, 1) + "N";
-                displayRenderQueued("#Force", sForce.c_str(), "", ipText, 10);
+                OledDisplay.renderQueued("#Force", sForce.c_str(), "", ipText, 10);
             }
         }
     }
